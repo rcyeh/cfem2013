@@ -1,11 +1,56 @@
-	The VPIN process is an improved model of PIN for the purpose of adapting to an increasing high-frequency trading world.  High frequency trading is not simply low frequency trading running on steroid, but a change in trading paradigm.  The authors of the paper propose to use event based time to overcome difficulties of using PIN in high active market.
+	The VPIN process is an improved model of PIN for the purpose of adapting to an increasing 
+high-frequency trading world.  High frequency trading is not simply low frequency trading running on steroid, 
+but a change in trading paradigm.  The authors of the paper propose to use event based time to overcome 
+difficulties of using PIN in high active market.
 
-	The traditional PIN model treats trading as rounds of games between traders and market makers.  For each round of the game, the stock can go up or down depending on the company news (good news lifts stock and vice versa).    There is a probability of Alpha that there is news and there is a probability of Sigma that news is good news (and 1-Sigma probability for bad news).  Now from the market maker’s perspective, you don’t know whether there is news or it is good news until the end of the round.  However, there are traders who knows all of that (could be from insider information) and aims to make a profit out of that information.  They are the informed traders who buy on good news and sell on bad news.  Again from the market maker’s perspective, if you sell/buy the stock to/from inform trader at the market price, you will lose on good/bad news as the stocks moves up/down.  So in order to account for the risk, market maker charges a bid-ask spread.  It is easy that you can just infer the news based solely on informed traders.  But there are also traders who know no information about the news trading on the stock and it is difficult to distinguish between the two. 
+	The traditional PIN model treats trading as rounds of games between traders and market makers.  
+For each round of the game, the stock can go up or down depending on the company news (good news lifts stock 
+and vice versa).    There is a probability of Alpha that there is news and there is a probability of Sigma 
+that news is good news (and 1-Sigma probability for bad news).  Now from the market maker’s perspective, you 
+don’t know whether there is news or it is good news until the end of the round.  However, there are traders 
+who knows all of that (could be from insider information) and aims to make a profit out of that information.  
+They are the informed traders who buy on good news and sell on bad news.  Again from the market maker’s 
+perspective, if you sell/buy the stock to/from inform trader at the market price, you will lose on good/bad 
+news as the stocks moves up/down.  So in order to account for the risk, market maker charges a bid-ask 
+spread.  It is easy that you can just infer the news based solely on informed traders.  But there are also 
+traders who know no information about the news trading on the stock and it is difficult to distinguish 
+between the two. 
 
-	In that case, the market maker computes bid/ask using the expected value of stock conditioning on someone buying/selling and updates his belief on Alpha/Sigma at each round of the “game”.    By computing the expected value, bid can be represented as the (expected stock price at the beginning of round) – (the prob of a bad news informed trader) X (expected drop in stock price).  And ask can be represented using in similar spirit as (expected stock price at the beginning of round) – (the prob of a good news informed trader) X (expected rise in stock price).  Assuming the trades arrival are Poisson Processes, the probability of the good/bad news informed trade can be induced from the (Arrival rate of Informed trade X Prob of a good news)/(Arrival rate of Informed trade X Prob of good news + Arrival rate of uninformed trade).  Now take the bid-ask spread and assuming the probability of good news is the same as bad news = 1/2, the bid-ask spread can be written as PIN (Prob that order is from informed trader) X (Expected price on good news – Expected price on bad news).  PIN is used as an indicator for the market maker to adjust prices. 
+	In that case, the market maker computes bid/ask using the expected value of stock conditioning on 
+someone buying/selling and updates his belief on Alpha/Sigma at each round of the “game”.    By computing 
+the expected value, bid can be represented as the (expected stock price at the beginning of round) – 
+(the prob of a bad news informed trader) X (expected drop in stock price).  And ask can be represented using 
+in similar spirit as (expected stock price at the beginning of round) – (the prob of a good news informed 
+trader) X (expected rise in stock price).  Assuming the trades arrival are Poisson Processes, the probability 
+of the good/bad news informed trade can be induced from the (Arrival rate of Informed trade X Prob of a good 
+news)/(Arrival rate of Informed trade X Prob of good news + Arrival rate of uninformed trade).  Now take the 
+bid-ask spread and assuming the probability of good news is the same as bad news = 1/2, the bid-ask spread 
+can be written as PIN (Prob that order is from informed trader) X (Expected price on good news – Expected
+price on bad news).  PIN is used as an indicator for the market maker to adjust prices. 
 
-	For a high frequency world, decisions are based on a large amount of data (book depth, position in queue, information, psychology…) with increasing difficulty to distinguish buy/sell.  The author shows that an event based approach is better than the traditional tick rule in classifying whether an order is a buy or a sell.   A traditional tick rules looks at price change at each time period to identify buy/sell (Ex: stock goes up this period, so the trade at this period is a buy).  Instead, author’s VPIN model measures trade not by time, but by volume as incoming trades are grouped in equal volume buckets (Ex: 1000 contracts).  For each trade, a percentage is classified as buy and rest is classified as sell.  So not all of the volume of trade is entirely buy or sell.  That classification percentage depends on prices change and std-dev of price change, so a price increase will give a higher percentage of trade assigned to the buy order and vice versa.  The author then uses the result of another paper to show that the trade imbalance (difference between sell volume and buy volume) and expected total trade flows (total sell volume and buy volume) can all be represented in terms of arrival rate of informed trades and probability of a news happening.  Lastly, the VPIN is defined as the amount of trade imbalance over the total trade flows across n buckets.  Thus, VPIN can be measured in terms of the three variables.
+	For a high frequency world, decisions are based on a large amount of data (book depth, position in 
+queue, information, psychology…) with increasing difficulty to distinguish buy/sell.  The author shows that 
+an event based approach is better than the traditional tick rule in classifying whether an order is a buy or 
+a sell.   A traditional tick rules looks at price change at each time period to identify buy/sell (Ex: stock 
+goes up this period, so the trade at this period is a buy).  Instead, author’s VPIN model measures trade not 
+by time, but by volume as incoming trades are grouped in equal volume buckets (Ex: 1000 contracts).  For each
+trade, a percentage is classified as buy and rest is classified as sell.  So not all of the volume of trade
+is entirely buy or sell.  That classification percentage depends on prices change and std-dev of price change,
+so a price increase will give a higher percentage of trade assigned to the buy order and vice versa.  The 
+author then uses the result of another paper to show that the trade imbalance (difference between sell volume 
+and buy volume) and expected total trade flows (total sell volume and buy volume) can all be represented in 
+terms of arrival rate of informed trades and probability of a news happening.  Lastly, the VPIN is defined as 
+the amount of trade imbalance over the total trade flows across n buckets.  Thus, VPIN can be measured in 
+terms of the three variables.
 
-	The author proceeded to test their VPIN measurements and shows that it can reliably predict the Flash Crash in 2010.  At approximately one hour before the crash, the VPIN is at its 90 percentile (or 10% at tail), then it moved to 95 percentile a few minutes later.  On the other hand, VIX doesn’t price the toxicity induced volatility and thus doesn’t peak at around the same period.  The models were also shown to be functioning well in other markets as well.  
+	The author proceeded to test their VPIN measurements and shows that it can reliably predict the Flash 
+Crash in 2010.  At approximately one hour before the crash, the VPIN is at its 90 percentile (or 10% at tail),
+then it moved to 95 percentile a few minutes later.  On the other hand, VIX doesn’t price the toxicity induced
+volatility and thus doesn’t peak at around the same period.  The models were also shown to be functioning well
+in other markets as well.  
 
-	Finally, the authors measure the correlation of VPIN with other factors.  They showed that VPIN is positively correlated with future volatility, positively correlated with absolute return in some case (but unreliable in some case).  For the conditional case, they showed that absolute return over volume bucket conditional on VPIN are positively correlated only when VPIN is low and they obtained mixed result when the VPIN is relatively large. 
+	Finally, the authors measure the correlation of VPIN with other factors.  They showed that VPIN is 
+positively correlated with future volatility, positively correlated with absolute return in some case (but 
+unreliable in some case).  For the conditional case, they showed that absolute return over volume bucket 
+conditional on VPIN are positively correlated only when VPIN is low and they obtained mixed result when the 
+VPIN is relatively large. 
