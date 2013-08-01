@@ -1,0 +1,196 @@
+OVERVIEW
+
+The tick data are consolidated NBBO quotes and trades that we recorded from
+Exegy (market data vendor).
+
+
+FILE FORMATS
+
+There are two file formats: ticks.YYYYMMDD.1.csv.gz and ticks.YYYYMMDD.h5
+
+ticks.YYYYMMDD.1.csv.gz begins with two header lines:
+
+% zcat ticks.20130423.1.csv.gz | head -2
+T|time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line
+Q|time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close
+
+followed by records of quotes and trades, one per line, in the order that we
+received the messages. Quote lines begin with 'Q'; trade lines begin with 'T'.
+
+% zcat ticks.20130423.1.csv.gz | grep AMZN | grep "^Q" | head -5
+Q|12:00:02.839580336|0|AMZN|*|P|Q|1366718402838|100|263.01|265|600|4|0|66|263.55
+Q|12:02:31.152034276|3|AMZN||P|Q|1366718551149|200|263.01|265|600|0|64345|66|
+Q|12:02:33.911736115|2|AMZN||P|Q|1366718553909|100|263.01|265|600|0|64365|66|
+Q|12:03:37.258298574|4|AMZN||P|Q|1366718617254|200|263.01|265|600|0|66602|66|
+Q|12:03:37.264896962|3|AMZN||P|Q|1366718617261|100|263.01|265|600|0|66603|66|
+
+% zcat ticks.20130423.1.csv.gz | grep AMZN | grep "^T" | head -5
+T|12:05:36.207671318|2|AMZN|D|1366718736205|1748|265|2500|2800|371064980|66|66|0|Q|513
+T|12:31:22.492084897|3|AMZN|Q|1366720282489|2266|264.5|300|3100|30|66|66|0|D|513
+T|12:37:21.318047104|4|AMZN|Q|1366720641314|2403|264.3|100|3200|1971968|66|66|1|D|513
+T|12:37:21.384664816|3|AMZN|P|1366720641381|2404|264.4|100|3300|1971968|66|66|1|D|513
+T|12:40:13.243370246|4|AMZN|P|1366720813239|2469|264|100|3400|30|66|66|0|D|513
+
+> library(rhdf5)
+> a <- h5ls("ticks.20130423.h5")
+> head(a)
+   group  name       otype   dclass    dim
+0      / ticks   H5I_GROUP                
+1 /ticks     A H5I_DATASET COMPOUND 101156
+2 /ticks    AA H5I_DATASET COMPOUND 163330
+3 /ticks  AACC H5I_DATASET COMPOUND   1658
+4 /ticks  AADR H5I_DATASET COMPOUND    359
+5 /ticks  AAIT H5I_DATASET COMPOUND   1407
+> a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+> head(a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))])
+                time latency symbol refresh bid_exchange ask_exchange exchange_time bid_size    bid ask ask_size quals seq_no instrument_status prev_close
+1 12:00:02.839580336       0   AMZN       *            P            Q  1.366718e+12      100 263.01 265      600     4      0                66     263.55
+2 12:02:31.152034276       3   AMZN                    P            Q  1.366719e+12      200 263.01 265      600     0  64345                66       0.00
+3 12:02:33.911736115       2   AMZN                    P            Q  1.366719e+12      100 263.01 265      600     0  64365                66       0.00
+4 12:03:37.258298574       4   AMZN                    P            Q  1.366719e+12      200 263.01 265      600     0  66602                66       0.00
+5 12:03:37.264896962       3   AMZN                    P            Q  1.366719e+12      100 263.01 265      600     0  66603                66       0.00
+6 12:03:37.273276736       3   AMZN                    P            Q  1.366719e+12      200 263.01 265      600     0  66604                66       0.00
+> head(a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))])
+                   time latency symbol exchange exchange_time seq_no price size volume     quals market_status instrument_status thru_exempt sub_market line
+128  12:05:36.207671318       2   AMZN        D  1.366719e+12   1748 265.0 2500   2800 371064980            66                66          NA          Q  513
+6180 12:31:22.492084897       3   AMZN        Q  1.366720e+12   2266 264.5  300   3100        30            66                66          NA          D  513
+6944 12:37:21.318047104       4   AMZN        Q  1.366721e+12   2403 264.3  100   3200   1971968            66                66          NA          D  513
+6946 12:37:21.384664816       3   AMZN        P  1.366721e+12   2404 264.4  100   3300   1971968            66                66          NA          D  513
+6952 12:40:13.243370246       4   AMZN        P  1.366721e+12   2469 264.0  100   3400        30            66                66          NA          D  513
+6956 12:40:57.665597679       3   AMZN        Q  1.366721e+12   2481 263.8  100   3500   1971968            66                66          NA          D  513
+
+
+FIELD DEFINITIONS
+
+T                  identifies a trade message in csv.gz file, stored as value "T" in field "type" in HDF5 file
+time               message receipt time in UTC, as a string: HH:MM:SS.nanoseconds
+latency            (time - exchange_time) in milliseconds
+symbol             symbol
+exchange           single-character code denoting the market center where the trade occurred --- see EXCHANGE CODES below
+exchange_time      exchange timestamp in milliseconds UTC
+seq_no             sequence number for trades
+price              trade price
+size               trade number of shares
+volume             cumulative number of shares traded in this symbol on day
+quals              unsigned 32-bit integer value with trade conditions --- see QUALS below
+market_status      { 1, 82, 66 }
+instrument_status  { 1, 66, 82, 99, 83 }
+                   1 --- normal
+                   66 --- pre-open
+thru_exempt        { 0, 1 } 1 means trade not subject to trade through rule 611 of Reg NMS
+sub_market         { "", "Q", "D", "N" } --- see EXCHANGE CODES below
+line               integer value probably related to the feed
+
+Q                  identifies a quote message in csv.gz file, stored as value "Q" in field "type" in HDF5 file
+time               message receipt time in UTC, as a string: HH:MM:SS.nanoseconds
+latency            (time - exchange_time) in milliseconds
+symbol             symbol
+refresh            { "", "*" } normally blank, "*" if the quote was a "refresh" after our connection dropped
+bid_exchange       single-character code denoting the market center where the bid originated --- see EXCHANGE CODES below
+ask_exchange       single-character code denoting the market center where the ask originated --- see EXCHANGE CODES below
+exchange_time      exchange timestamp in milliseconds UTC
+bid_size           number of shares in NBBO bid
+bid                NBBO bid price
+ask                NBBO ask price
+ask_size           number of shares in NBBO ask
+quals              unsigned 32-bit integer value with quote conditions --- see QUALS below
+seq_no             sequence number for trades
+instrument_status  { 1, 66, 82, 99, 83 }
+                   1 --- normal
+                   66 --- pre-open
+prev_close         only for refresh quotes, blank or zero otherwise)
+
+
+KNOWN DATA QUALITY ISSUES
+
+We get multiple reports of opening and closing trades.  I recommend excluding
+trades with conditions 32 and 102.  This does exclude opening and closing
+trades at regional exchanges, but the volumes in those trades is typically small.
+In the example below, the second closing print is from exchange 'P', which is
+not the primary exchange for AMZN. The third closing print echoes the first.
+We would exclude both the second and the third.
+
+> qsplit <- function(d) { return c( floor(d / 256 / 256 / 256), floor(d / 256 / 256) %% 256, floor(d / 256) %% 256, d %% 256) }
+> hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
+> a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
+                     time latency symbol exchange exchange_time  seq_no  price  size  volume     quals market_status instrument_status thru_exempt sub_market line
+ 106743 20:00:00.606525599     102   AMZN        Q  1.366747e+12 1226042 268.90 80485 2239351 553663232            82                82          NA          D  513
+ 106750 20:00:01.312456106     420   AMZN        P  1.366747e+12 1226375 268.88   100 2239351        32            82                82          NA          D  513
+ 106755 20:00:04.122364899      65   AMZN        Q  1.366747e+12 1226872 268.90 80485 2239451        32            82                82          NA          D  513
+
+
+
+EXCHANGE CODES
+
+	A	NYSE MKT (Formerly American Stock Exchange, in New York)
+	B	NASDAQ OMX BX (Boston)
+	C	National Stock Exchange (originally Cincinnati)
+	D	FINRA Alternative Display Facility (ADF)
+	E	Market Independent --- doesn't appear in practice
+	I	International Securities Exchange --- options
+	J	EDGA Exchange, Inc
+	K	EDGX Exchange, Inc
+	M	Chicago Stock Exchange
+	N	NYSE Euronext (New York)
+	P	NYSE Arca Exchange (originally Pacific)
+	Q	NASDAQ OMX
+	W	Chicago Board Options Exchange
+	X	NASDAQ OMX PHLX --- options
+	Y	BATS Y-Exchange, Inc
+	Z	BATS Exchange Inc
+
+
+QUALS
+
+Exegy encodes trade and quote conditions into an unsigned 32-bit integer in the quals field.
+This integer should be interpreted as four 8-bit integers which can each take the values 0-255.
+	int q1 = quals % 256;
+	int q2 = (quals / 256) % 256;
+	int q3 = (quals / 256 / 256) % 256;
+	int q4 = (quals / 256 / 256 / 256);
+
+Important values for the integers in this field are:
+
+For Quotes
+	0	Regular transaction
+	2	Closing quote
+	3	Opening Quote
+	4	Extended hours
+	5	Firm quote
+	31	Slow Quote Due to an LRP or Gap Quote on the Bid Side
+	32	Slow Quote Due to an LRP or Gap Quote on the Offer Side
+	33	Slow quote (bid and offer) due to LRP, ATB, or Gap
+	61	One sided NBBO quote
+	117	Retail interest on Bid Quote
+	118	Retail interest on Offer Quote
+	119	Retail Interest on Bid and Offer Quote
+
+For Trades (* I recommend ignoring these)
+	0	Regular transaction
+	1	* Trans is out of sequence
+	6	Late report of opening trade and is out of sequence, or set the open
+	21	* Cash trade
+	22	* Average price trade
+	23	Intermarket Sweep
+	27	* Next Day Trade
+	30	* Extended hours
+	31	* Derivatively Priced
+	32	* Market Center Closing Trade (official close price)
+	33	Crossed trade including Request For Cross (RFC)
+	52	* Prior reference price
+	53	Opening Prints
+	58	Re-Opening Prints
+	59	Closing Prints
+	102	* Opening price
+	123	* Stock Option Trade
+	126	* Extended hours (Sold out of sequence)
+	127	* Trade Through Exempt
+	148	* Sell-side order
+
+
+BACKGROUND REFERENCE
+
+CQS/CTS: http://www.nyxdata.com/Docs/Market-Data/Technical?folder=32892
+UQDF/UTDF: https://www.nasdaqtrader.com/Trader.aspx?id=FeedMCastIPS#uqdf
+
+
