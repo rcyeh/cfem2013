@@ -4,8 +4,8 @@ Project schedule:
 
       July 2013
 Su Mo Tu We Th Fr Sa
-21 22 23 24 25 26 27
-28 29 30 31
+21 22 23 24 25 26 27 Read VPIN paper and summarize
+28 29 30 31          Plan VPIN evaluation
 
      August 2013
 Su Mo Tu We Th Fr Sa
