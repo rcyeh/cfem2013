@@ -110,7 +110,7 @@ In the example below, the second closing print is from exchange 'P', which is
 not the primary exchange for AMZN. The third closing print echoes the first.
 We would exclude both the second and the third.
 
-> qsplit <- function(d) { return c( floor(d / 256 / 256 / 256), floor(d / 256 / 256) %% 256, floor(d / 256) %% 256, d %% 256) }
+> qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 256) %% 256, floor(d / 256) %% 256, d %% 256)) }
 > hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 > a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
                      time latency symbol exchange exchange_time  seq_no  price  size  volume     quals market_status instrument_status thru_exempt sub_market line
