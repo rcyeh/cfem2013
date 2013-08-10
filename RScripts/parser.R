@@ -5,10 +5,18 @@ qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 2
 
 hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 
+assign_buy <- function(prev_price, price, use_sub_penny_rule=T){
+  if (use_sub_penny_rule){
+    return (price >= prev_price)
+  }else{
+    return (round(price,2)>=round(prev_price,2))
+  }
+}
 
 #interval in seconds
 calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed=F
                                     #, use_momentum_rule=F
+                                    , use_sub_penny_rule = T
                                     ) {
 	m_interval <- interval / 60.0
 	options(digits.secs=9)
@@ -38,7 +46,7 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
 		}else{
 			if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 				residual_volume <- bucket_volume_size - bucket_volume
-				if (price >= prev_price){
+        if (assign_buy(prev_price, price, use_sub_penny_rule)){				
                 OI <- OI + residual_volume
         }else{
                 OI <- OI - residual_volume
@@ -115,9 +123,13 @@ total_entry <- length(OI_buckets_delta_prices[,1])
 TR_VPIN <- rollmean(OI_buckets_delta_prices[,1], L)
 MA_P_Changes <- rollmean(OI_buckets_delta_prices[,2], L)
 
+OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(10,trades,1000,F)
+MA_P_Changes_ns <- rollmean(OI_buckets_delta_prices_ns[,2], L)
+
 # No significance
 plot_model_stat(TR_VPIN, OI_buckets_delta_prices[L:total_entry,2])
 
 # Significance, but with tiny R^2
 plot_model_stat(TR_VPIN, MA_P_Changes)
 
+plot_model_stat(TR_VPIN, MA_P_Changes_ns)
