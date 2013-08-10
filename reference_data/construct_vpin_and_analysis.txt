@@ -1,0 +1,52 @@
+Questions to be addressed:
+
+ a. Does [a VPIN-like indicator] predict future prices? Over what time frame?
+	Let's do this for 1-minute time bar VPIN, variable length time bar, then move on to VPIN based volume bars. As for the time period, we can start with the file you have provided us. If there is a positive correlation between VPIN and price movement, this effect should be able generalize. Yet we definitely want to use a time period of stressful data. 
+
+	We will start with AMZN data, and in order to replicate the research done by Anderson, we need transactional level data for an index product that is very liquidly traded. In the article, they used S&P 500 mini. Ideally we want hands on this data.
+	
+ b. Does [a VPIN-like indicator] predict future volatility? Over what time frame?
+	We will explore this after exploring the predictive power in price. 
+
+====================================================================
+
+VPIN Constructions and analysis
+
+Write R-code to parse the data, compute OI/SOI, followed by VPIN measure, which is just a MA average measure. The code will be in Parser.R
+
+
+	> Assign Buy/Sell label to each tick or bin.
+
+	For prices which did not move, we should try two things
+	1) Assign Buy label
+	2) Take a look of the previous price change direction, and assumes the same direction
+	
+	Compare how each of the above approaches works when we perform regression analysis and decide which one to use
+
+	> VPIN and Benchmark Construction.
+
+	We should compute VPIN using 
+
+	1) TR-VPIN (10 seconds, 60 seconds, 300 seconds)
+	2) FB-VPIN (1, 1000, 5000)
+	3) Bulk-Volume VPIN
+	4) benchmark U1-VPIN and U2-VPIN	
+
+	> Analysis
+
+	1) Regress All the VPINs against instantaneous price changes over one volume bin, and a MA of price changes a pre-specified fixed volume size, and calculate R^2.
+	2) Regress All the VPINs against MA of volumes, and calculate R^2.
+	3) Regress All the VPINs against realized volatility with a pre-specified window L, and calculate R^2.
+
+	4) Compare the correlation between U1-VPIN and individual VPIN, observe the effect of increasing volume bucket size, and the impact of the correlation.
+
+	5) See if the VPINs beat the benchmark U1-VPIN and U2-VPIN. Verify Anderson's conclusion regarding relative performance.
+
+	6) Take a close look of the residual, and determine if the model is a good fit. If not transform the data and repeat Analysis.
+
+	7) Determine if the model is useful in predicting price changes and volume
+
+
+
+
+
