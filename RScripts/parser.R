@@ -1,5 +1,6 @@
 library(rhdf5)
 library(zoo)
+library(TTR)
 
 qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 256) %% 256, floor(d / 256) %% 256, d %% 256)) }
 
@@ -202,17 +203,23 @@ bucket_size <- 1000
 time_bin <- 60
 
 OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size)
-
 total_entry <- length(OI_buckets_delta_prices[,1])
-TR_VPIN <- rollmean(OI_buckets_delta_prices[,1], L)
+
+OI_buckets_delta_prices_sma <- SMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
+OI_buckets_delta_prices_ema <- EMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
+TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
 
 OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(time_bin,trades,bucket_size,F,T)
 
-# TODO, regress against rolling price
 # Regress against Instantaneous Price Change -> No significance
 plot_model_stat(TR_VPIN, OI_buckets_delta_prices[L:total_entry,2])
 # Do not Apply sub-penny rule, do not take subpenny price change into account
 plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ns[L:total_entry,2])
+
+# Both SMA & EMA have significant p-value with tiny R^2
+plot_model_stat(TR_VPIN, OI_buckets_delta_prices_sma)
+plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ema)
+
 
 # Regress against rolling realized standard deviation -> Mechanistic Significance
 MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
@@ -221,5 +228,5 @@ plot_model_stat(TR_VPIN, MA_volume_delta)
 bucket_size <- 3000
 MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
 OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size)
-TR_VPIN <- rollmean(OI_buckets_delta_prices[,1], L)
+TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
 plot_model_stat(TR_VPIN, MA_volume_delta)
