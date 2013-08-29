@@ -91,7 +91,9 @@ calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_perio
 
 
 #interval in seconds
-calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed=F
+calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size
+                                    , L=50
+                                    , signed=F
                                     , use_momentum_rule = T
                                     , use_sub_penny_rule = T
                                     ) {
@@ -104,14 +106,20 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
 	volume_count <- 0.0
 	OI <- 0.0
 	OI_buckets <- vector()
-  price_changes <- vector()
+  price_returns <- vector()
+  price_volatilities <- vector()
+	price_returns_finer_grained <- vector()
   first_record <- T
   i <- 1
-  while (i != length(trades[,1])){    
+  j <- 1
+  
+  while (i != length(trades[,1])){   
+    j <- j+1
     #print(paste("I: ", i))
 		time <- strptime(trades[i,"time"],"%H:%M:%OS")
 		volume <- as.numeric(trades[i,"size"])
 		price <- as.numeric(trades[i,"price"])
+    
     #print(paste("SIZE: ", volume))
     #print(paste("Cum Vol: ", volume_count))
 		if (first_record){ #first record
@@ -121,6 +129,9 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
       prev_bucket_price <- price
       first_record <- F
 		}
+    
+		price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 			residual_volume <- bucket_volume_size - bucket_volume
       #print("filled one bucket")
@@ -136,8 +147,13 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
 			  i <- i+1
 			}
       
-      price_changes <- c(price_changes, log(price/prev_bucket_price))
-      
+      price_returns <- c(price_returns, log(price/prev_bucket_price))
+			price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
+      #print(paste("Vector Size: ", length(price_returns_finer_grained)))
+      #print(paste("VAR: ", var(price_returns_finer_grained)))
+      if ((j %% L) == 0){ # using L number of buckets
+			  price_returns_finer_grained <- vector()
+      }
       if (signed){
         OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
         #print (paste("SOI is: ",OI))
@@ -159,7 +175,9 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
 			bucket_volume <- bucket_volume + volume
       volume_count <- volume_count + volume
 		}
-		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ #Let's update OI
+    
+		#TR-VPIN time interval is reached, update OI vector
+		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
 			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){
 				OI <- OI + bucket_volume
 			}else{
@@ -173,7 +191,8 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size, signed
 		}
     i <- i+1
 	}
-  OI_vs_delta_prices <- cbind(OI_buckets, price_changes)
+  
+  OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
 	#return (OI_buckets)
 	return (OI_vs_delta_prices)
 }
@@ -207,8 +226,11 @@ total_entry <- length(OI_buckets_delta_prices[,1])
 
 OI_buckets_delta_prices_sma <- SMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
 OI_buckets_delta_prices_ema <- EMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
-TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
+price_volatilities <- OI_buckets_delta_prices[,3]
+price_volatilities[is.na(price_volatilities)] <- 0
+price_volatilities <- SMA(price_volatilities, L)[L:total_entry]
 
+TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
 OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(time_bin,trades,bucket_size,F,T)
 
 # Regress against Instantaneous Price Change -> No significance
@@ -224,9 +246,11 @@ plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ema)
 # Regress against rolling realized standard deviation -> Mechanistic Significance
 MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
 plot_model_stat(TR_VPIN, MA_volume_delta)
+plot_model_stat(TR_VPIN, price_volatilities)
 
 bucket_size <- 3000
 MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
 OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size)
+total_entry <- length(OI_buckets_delta_prices[,1])
 TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
 plot_model_stat(TR_VPIN, MA_volume_delta)
