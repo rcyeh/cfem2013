@@ -139,21 +139,28 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
     residual_volume <- residual_volume + volume
     
     if (residual_volume >= fixed_volume){ #filled one bin
-      #print("filled one bin")
+      print("filled one bin")
       j <- j+1
       b <- 1.0
+      sigma <- 0.0
+      
       if (use_gaussian){
         sigma <- var(gaussian_sigma_vector)
-        if (sigma == 0){ b<- 0.0 }
-        else{ b <- 2*pnorm((price-prev_price)/sigma) - 1 }
-      }else{
+      }
+      
+      if (!is.na(sigma) && !(sigma==0)){ 
+        b <- 2*pnorm((price-prev_price)/sigma) - 1 
+        #print(paste("Gaussian: ", price, prev_price, sigma, b))
+      }
+      else{
         if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){
           b <- 1.0
         }else{
           b <- -1.0
         }
-        OI <- OI + b*fixed_volume 
       }
+      #print(paste("Set b to: ", b))
+      OI <- OI + b*fixed_volume 
       residual_volume <- residual_volume - fixed_volume
       if ( residual_volume > fixed_volume){ 
         trades[i,"size"] <- 0.0
@@ -216,6 +223,7 @@ calc_OI_by_time_buckets <- function(interval
   price_returns <- vector()
   price_volatilities <- vector()
 	price_returns_finer_grained <- vector()
+	gaussian_sigma_vector <- vector()
   first_record <- T
   i <- 1
   j <- 0
@@ -238,15 +246,21 @@ calc_OI_by_time_buckets <- function(interval
 		}
     
 		price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    gaussian_sigma_vector <- c(gaussian_sigma_vector, price-prev_price)
+    entries <- length(gaussian_sigma_vector)
+    if (entries > L){
+      gaussian_sigma_vector <- gaussian_sigma_vector[2:entries]
+    }
     
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 			residual_volume <- bucket_volume_size - bucket_volume
       #print("filled one bucket")
 			b <- 1.0
-			if (use_gaussian){
-			  sigma <- var(gaussian_sigma_vector)
-			  if (sigma == 0){ b<- 0.0 }
-			  else{ b <- 2*pnorm((price-prev_price)/sigma)  - 1 }
+			if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
+      if(!is.na(sigma) && !(sigma==0)){
+        #print(gaussian_sigma_vector)
+        print("gaussian b")
+        b <- 2*pnorm((price-prev_price)/sigma)  - 1 
 			}
       else{
         if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){				
@@ -256,6 +270,7 @@ calc_OI_by_time_buckets <- function(interval
         }
       }
 			OI <- OI + b*residual_volume
+      #print(paste("Updating OI: ", OI, b, residual_volume))
 			if (volume_count + volume > bucket_volume_size){ #split order
 				trades[i,"size"] <- volume_count + volume - bucket_volume_size
 				#print(paste("Split volume to ", trades[i,"size"], "I: ", i))
@@ -272,10 +287,10 @@ calc_OI_by_time_buckets <- function(interval
       }
       if (signed){
         OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
-        #print (paste("SOI is: ",OI))
+        print (paste("SOI is: ",OI))
       }else{
         OI_buckets <- c(OI_buckets, abs(OI / bucket_volume_size)) #update OI_bucket 
-        #print (paste("OI is: ",OI))
+        print (paste("OI is: ",OI))
       }
 			
 			OI <- 0.0

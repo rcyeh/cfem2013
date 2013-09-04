@@ -18,10 +18,20 @@ fixed_bin <- 200
 bucket_size <- 1000 # must be a multiple of fixed_bin for FB_VPIN to work properly
 time_bin <- 60
 
+# Please uncomment to test the desired OI used by VPINs (TR_VPIN, FB_VPIN, bulk-volume TR, bulk-volume FB)
+
 # TR_VPIN
 OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, F)
-# Please uncomment to test the FB_VPIN
+
+# TR_VPIN with bulk volume
+#OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, T)
+
+# FB_VPIN without bulk volume
 #OI_buckets_delta_prices <- calc_OI_by_volume_buckets(fixed_bin,trades,bucket_size, F)
+
+# FB_VPIN with bulk volume
+OI_buckets_delta_prices <- calc_OI_by_volume_buckets(fixed_bin,trades,bucket_size, T)
+
 
 total_entry <- length(OI_buckets_delta_prices[,1])
 
@@ -32,12 +42,12 @@ price_volatilities[is.na(price_volatilities)] <- 0
 price_volatilities <- SMA(price_volatilities, L)[L:total_entry]
 
 TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
-OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, F, F, T)
+#OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, F, L, F, F, T)
 
 # Regress against Instantaneous Price Change -> No significance
 plot_model_stat(TR_VPIN, OI_buckets_delta_prices[L:total_entry,2])
 # Do not Apply sub-penny rule, do not take subpenny price change into account
-plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ns[L:total_entry,2])
+#plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ns[L:total_entry,2])
 
 # Both SMA & EMA have significant p-value with tiny R^2
 plot_model_stat(TR_VPIN, OI_buckets_delta_prices_sma)
