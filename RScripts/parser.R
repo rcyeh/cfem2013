@@ -90,7 +90,9 @@ calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_perio
 }
 
 calc_OI_by_volume_buckets <- function(fixed_volume, trades
-                                      , bucket_volume_size                                     
+                                      , bucket_volume_size
+                                      , use_gaussian
+                                      , L=50
                                       , signed=F
                                       , use_momentum_rule = T
                                       , use_sub_penny_rule = T){
@@ -105,12 +107,14 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
   price_returns <- vector()
   price_volatilities <- vector()
   price_returns_finer_grained <- vector()
+  gaussian_sigma_vector <- vector() # used to compute sigma for Bulk-Volume VPIN
   first_record <- T
   i <- 1
   j <- 0
+  k <- 0
   
-  while (i != length(trades[,1])){   
-    print(paste("I: ", i))
+  while (i != length(trades[,1])){ 
+    k <- k+1
     volume <- as.numeric(trades[i,"size"])
     price <- as.numeric(trades[i,"price"])
     
@@ -124,14 +128,31 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
     }
     
     price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    
+    # Please see Anderson's paper pg 22, here I use the most L number of transactions as a sample
+    # The paper does not specify on how to acquire the sample of price changes across bins, in this case. The sample is dynamic
+    gaussian_sigma_vector <- c(gaussian_sigma_vector, price-prev_price)
+    entries <- length(gaussian_sigma_vector)
+    if (entries > L){
+      gaussian_sigma_vector <- gaussian_sigma_vector[2:entries]
+    }
     residual_volume <- residual_volume + volume
+    
     if (residual_volume >= fixed_volume){ #filled one bin
       #print("filled one bin")
       j <- j+1
-      if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){				
-        OI <- OI + fixed_volume
+      b <- 1.0
+      if (use_gaussian){
+        sigma <- var(gaussian_sigma_vector)
+        if (sigma == 0){ b<- 0.0 }
+        else{ b <- 2*pnorm((price-prev_price)/sigma) - 1 }
       }else{
-        OI <- OI - fixed_volume
+        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){
+          b <- 1.0
+        }else{
+          b <- -1.0
+        }
+        OI <- OI + b*fixed_volume 
       }
       residual_volume <- residual_volume - fixed_volume
       if ( residual_volume > fixed_volume){ 
@@ -146,6 +167,10 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
       prev_price <- price      
     }else{
       i <- i+1
+    }
+    
+    if ((k %% L)==0){ # only use L vectors to calculate volatility
+      price_returns_finer_grained <- vector()
     }
     
     #FB-VPIN bucket is filled, update OI vector
@@ -170,7 +195,10 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
 }
 
 #interval in seconds
-calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size
+calc_OI_by_time_buckets <- function(interval
+                                    , trades
+                                    , bucket_volume_size
+                                    , use_gaussian
                                     , L=50
                                     , signed=F
                                     , use_momentum_rule = T
@@ -190,7 +218,7 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size
 	price_returns_finer_grained <- vector()
   first_record <- T
   i <- 1
-  j <- 1
+  j <- 0
   
   while (i != length(trades[,1])){   
     j <- j+1
@@ -214,11 +242,20 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 			residual_volume <- bucket_volume_size - bucket_volume
       #print("filled one bucket")
-      if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){				
-              OI <- OI + residual_volume
-      }else{
-              OI <- OI - residual_volume
+			b <- 1.0
+			if (use_gaussian){
+			  sigma <- var(gaussian_sigma_vector)
+			  if (sigma == 0){ b<- 0.0 }
+			  else{ b <- 2*pnorm((price-prev_price)/sigma)  - 1 }
+			}
+      else{
+        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){				
+                b <- 1.0
+        }else{
+                b <- -1.0
+        }
       }
+			OI <- OI + b*residual_volume
 			if (volume_count + volume > bucket_volume_size){ #split order
 				trades[i,"size"] <- volume_count + volume - bucket_volume_size
 				#print(paste("Split volume to ", trades[i,"size"], "I: ", i))
@@ -272,7 +309,6 @@ calc_OI_by_time_buckets <- function(interval, trades, bucket_volume_size
 	}
   
   OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
-	#return (OI_buckets)
 	return (OI_vs_delta_prices)
 }
 
@@ -283,60 +319,3 @@ plot_model_stat<-function(xs, ys){
   abline(lm(ys~xs))
   return(one_factor_model)
 }
-
-a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
-
-
-quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
-
-head(quotes)
-
-trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
-
-#potential trades to exclude
-#trades <- a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
-
-L <- 50
-fixed_bin <- 200 
-bucket_size <- 1000 # must be a multiple of fixed_bin for FB_VPIN to work properly
-time_bin <- 60
-
-# TR_VPIN
-OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size)
-# Please uncomment to test the FB_VPIN
-#OI_buckets_delta_prices <- calc_OI_by_volume_buckets(fixed_bin,trades,bucket_size)
-
-total_entry <- length(OI_buckets_delta_prices[,1])
-
-OI_buckets_delta_prices_sma <- SMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
-OI_buckets_delta_prices_ema <- EMA(OI_buckets_delta_prices[,2], L)[L:total_entry]
-price_volatilities <- OI_buckets_delta_prices[,3]
-price_volatilities[is.na(price_volatilities)] <- 0
-price_volatilities <- SMA(price_volatilities, L)[L:total_entry]
-
-TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
-OI_buckets_delta_prices_ns <- calc_OI_by_time_buckets(time_bin,trades,bucket_size,F,T)
-
-# Regress against Instantaneous Price Change -> No significance
-plot_model_stat(TR_VPIN, OI_buckets_delta_prices[L:total_entry,2])
-# Do not Apply sub-penny rule, do not take subpenny price change into account
-plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ns[L:total_entry,2])
-
-# Both SMA & EMA have significant p-value with tiny R^2
-plot_model_stat(TR_VPIN, OI_buckets_delta_prices_sma)
-plot_model_stat(TR_VPIN, OI_buckets_delta_prices_ema)
-
-
-# Regress against rolling realized standard deviation -> Mechanistic Significance
-MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
-plot_model_stat(TR_VPIN, MA_volume_delta)
-plot_model_stat(TR_VPIN, price_volatilities)
-
-####################################################################################
-
-bucket_size <- 3000
-MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
-OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size)
-total_entry <- length(OI_buckets_delta_prices[,1])
-TR_VPIN <- SMA(OI_buckets_delta_prices[,1], L)[L:total_entry]
-plot_model_stat(TR_VPIN, MA_volume_delta)
