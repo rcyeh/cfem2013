@@ -1,6 +1,8 @@
 #Please change your source file path
-source("C:/CFEM2013/RScripts/parser.R")
+#source("C:/CFEM2013/RScripts/parser.R")
+#setwd("~/Documents/FE Project")
 
+source("/Users/JiaXu/FE project 2013/RScripts/parser.R")
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 
 
