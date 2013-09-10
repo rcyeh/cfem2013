@@ -1,0 +1,1 @@
+import csvimport urlliburl = "http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance%20.quotes%20where%20symbol%20in%20(%22YHOO%22)%0A%09%09&diagnostics=true&env=http%3A%2F%2Fdatatables.org%2Falltables.env"page = urllib.urlopen(url).read()d=page.split("<StockExchange>")[1]print(d)
