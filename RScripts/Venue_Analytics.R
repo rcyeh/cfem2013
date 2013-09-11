@@ -31,7 +31,7 @@ trades$time <- as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,
 mid_day_start <- as.POSIXct('23/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
 mid_day_end <- as.POSIXct('23/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
 early <- as.POSIXct('23/04/2013 12:10:00', format = "%d/%m/%Y %H:%M:%S")
-late <- as.POSIXct('23/04/2013 23:50:00', format = "%d/%m/%Y %H:%M:%S")
+late <- as.POSIXct('23/04/2013 21:05:00', format = "%d/%m/%Y %H:%M:%S")
 trades$timegrp[trades$time >= late ] = 'trade_startend'
 trades$timegrp[mid_day_end <= trades$time & trades$time < late] = 'afternoon'
 trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'midday'
