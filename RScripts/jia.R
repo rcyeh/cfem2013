@@ -1,5 +1,7 @@
 #install.packages("fBasics")
 #install.packages("car")
+#install.packages("aod")
+library(aod)
 library(fBasics)
 library(car)
 
