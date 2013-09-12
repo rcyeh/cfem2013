@@ -74,7 +74,7 @@ plot_model_stat(TR_VPIN, MA_volume_delta)
 #Please change your source file path
 source("C:/CFEM2013/RScripts/parser.R")
 
-a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+a <- h5read("ticks.20130424.h5", "/ticks/AMZN", bit64conversion='double')
 
 
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]

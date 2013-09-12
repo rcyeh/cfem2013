@@ -17,7 +17,7 @@ setwd("C:/cfem2013/RScripts")
 #Change symbol to fetch different symbol data
 symbol = 'MSFT'
 
-a <- h5read("ticks.20130423.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
+a <- h5read("ticks.20130424.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
 
