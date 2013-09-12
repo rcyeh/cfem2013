@@ -7,6 +7,20 @@ library(car)
 
 setwd("/Users/JiaXu/Documents/FE Project")
 source("parser.R")
+a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
+trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+L <- 50
+fixed_bin <- 200 
+bucket_size <- 1000 # must be a multiple of fixed_bin for FB_VPIN to work properly
+time_bin <- 60
+
+# Please uncomment to test the desired OI used by VPINs (TR_VPIN, FB_VPIN, bulk-volume TR, bulk-volume FB)
+
+# TR_VPIN
+OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, F) 
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a,bucket_size, F, L, T)
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a,bucket_size, F, L, T, T, T, T)
 
 #Test SIO
 lm1 <-lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1])
