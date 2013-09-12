@@ -29,7 +29,7 @@ residualPlots(lm4)
 #0.09 R^2
 
 plot(SOI_buckets_delta_prices[,1]*
-       SOI_buckets_delta_prices[,3],SOI_buckets_delta_prices[,2],xlim=c(-5e-06,5e-06),ylim=c(-0.003,0.003))
+       SOI_buckets_delta_prices[,3],SOI_buckets_delta_prices[,2],xlim=c(-5e-07,4e-07),ylim=c(-0.001,0.0013))
 
 ind1 = which(SOI_buckets_delta_prices[,3]==0,arr.ind = T)
 length(which(SOI_buckets_delta_prices[,3]==0,arr.ind = T))
@@ -72,3 +72,28 @@ residualPlots(lm2)
 SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a,bucket_size, F, L, T)
 
 SOI_buckets_delta_prices3 <- calc_OI_by_time_buckets(time_bin,a,bucket_size, F, L, T, T, T, T)
+
+##############################[Volatility Test]#################################
+
+# Regress against rolling realized standard deviation -> Mechanistic Significance
+par(mfrow=c(1,3))
+MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
+MA_volume <- calc_volat_by_volumes(trades, bucket_size, L, T)
+plot_model_stat(TR_VPIN,MA_volume_delta,"volume_delta")
+plot_model_stat(TR_VPIN, MA_volume,"volume")
+price_volatilities <- OI_buckets_delta_prices[,3]
+price_volatilities[is.na(price_volatilities)] <- 0
+price_volatilities <- SMA(price_volatilities, L)[L:total_entry]
+plot_model_stat(TR_VPIN, price_volatilities,"price vol")
+
+#OFF-SET BY 1 peroid
+par(mfrow=c(1,3))
+MA_volume_delta <- calc_volat_by_volumes(trades, bucket_size, L)
+MA_volume <- calc_volat_by_volumes(trades, bucket_size, L, T)
+n0 = length(MA_volume)
+plot_model_stat(TR_VPIN[-n0],MA_volume_delta[-1],"volume_delta","OFF-SET BY 1")
+plot_model_stat(TR_VPIN, MA_volume,"volume","OFF-SET BY 1")
+price_volatilities <- OI_buckets_delta_prices[,3]
+price_volatilities[is.na(price_volatilities)] <- 0
+price_volatilities <- SMA(price_volatilities, L)[L:total_entry]
+plot_model_stat(TR_VPIN[-n0], price_volatilities[-1],"price vol","OFF-SET BY 1")
