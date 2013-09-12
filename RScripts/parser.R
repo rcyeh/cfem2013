@@ -1,6 +1,6 @@
 library(rhdf5)
 library(zoo)
-library(TTR)
+library(TTR) 
 
 qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 256) %% 256, floor(d / 256) %% 256, d %% 256)) }
 
@@ -9,7 +9,7 @@ hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) }
 assign_buy_bid_ask <- function(bid, ask, price){
   bid_diff <- price - bid
   ask_diff <- price - ask
-  if (bid_diff < ask_diff){ # trade price closer to bid => taking the bid => assign sell
+  if (abs(bid_diff) < abs(ask_diff)){ # trade price closer to bid => taking the bid => assign sell
     return (F)
   }
   else{ # trade price closer to ask => assign buy
@@ -62,7 +62,8 @@ modify_series <- function(series, burn_size){
   }
 }
 
-calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_period) {
+calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_period
+                                  , compute_pure_volume=F) {
   volume_volatilities <- vector()
   vol_vector <- vector()
   cum_volume <- 0.0
@@ -96,7 +97,11 @@ calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_perio
       first_burn <- F
       #print(paste("VEC: ",modify_series(vol_vector, burn * bucket_volume_size)))
       #print(paste("VOL: ", sd(modify_series(vol_vector, burn * bucket_volume_size))))
-      volume_volatilities <- c(volume_volatilities, var(modify_series(vol_vector, burn * bucket_volume_size)))
+      if (!compute_pure_volume){
+        volume_volatilities <- c(volume_volatilities, var(modify_series(vol_vector, burn * bucket_volume_size)))
+      }else{
+        volume_volatilities <- c(volume_volatilities, sum(modify_series(vol_vector, burn * bucket_volume_size)))
+      }
       cum_volume <- 0.0
       
     }
@@ -113,7 +118,8 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
                                       , L=50
                                       , signed=F
                                       , use_momentum_rule = T
-                                      , use_sub_penny_rule = T){
+                                      , use_sub_penny_rule = T
+                                      , use_quotes_for_price_change = F){
   Q <- bucket_volume_size / fixed_volume
   print(Q)
   prev_price <- 0
@@ -126,15 +132,42 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
   price_volatilities <- vector()
   price_returns_finer_grained <- vector()
   gaussian_sigma_vector <- vector() # used to compute sigma for Bulk-Volume VPIN
+  quotes_vector <- vector()
   first_record <- T
   i <- 1
   j <- 0
   k <- 0
+  q <- 0
+  prev_symbol <- 'X'
+  prev_bid <- 0.0
+  prev_ask <- 0.0
+  use_quotes <- F
   
-  while (i != length(trades[,1])){ 
+  while (i+q != length(trades[,1])){ 
+    #print(paste("I&Q: ", i, q))
+    type <- trades[i+q,"type"]
+    if (type == 'Q'){ # This is a Quote
+      prev_symbol <- 'Q'
+      prev_bid <- trades[i+q,"bid"]
+      prev_ask <- trades[i+q,"ask"]
+      q <- q+1
+      quotes_vector <- c(quotes_vector, (prev_bid + prev_ask)/2)
+      if (use_quotes_for_price_change){
+        entries <- length(quotes_vector)
+        if (entries > L){
+          quotes_vector <- quotes_vector[2:entries]
+        }
+      }
+      next
+    }
+    else{ # This is a trade
+      if (prev_symbol != 'X'){ use_quotes <- T }
+      print("Parsing Trades")
+    }
+    
     k <- k+1
-    volume <- as.numeric(trades[i,"size"])
-    price <- as.numeric(trades[i,"price"])
+    volume <- as.numeric(trades[i+q,"size"])
+    price <- as.numeric(trades[i+q,"price"])
     
     #print(paste("SIZE: ", volume))
     #print(paste("Cum Vol: ", residual_volume))
@@ -171,9 +204,12 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
         #print(paste("Gaussian: ", price, prev_price, sigma, b))
       }
       else{
-        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){
+        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule
+                       ,use_quotes, prev_bid, prev_ask)){
+          print(paste("DEBUG: BUY"))
           b <- 1.0
         }else{
+          print(paste("DEBUG: SELL"))
           b <- -1.0
         }
       }
@@ -181,7 +217,7 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
       OI <- OI + b*fixed_volume 
       residual_volume <- residual_volume - fixed_volume
       if ( residual_volume > fixed_volume){ 
-        trades[i,"size"] <- 0.0
+        trades[i+q,"size"] <- 0.0
         #print(paste("Split volume to ", trades[i,"size"], "I: ", i))
       }
       else{
@@ -228,6 +264,7 @@ calc_OI_by_time_buckets <- function(interval
                                     , signed=F
                                     , use_momentum_rule = T
                                     , use_sub_penny_rule = T
+                                    , use_quotes_for_price_change = F
                                     ) {
 	m_interval <- interval / 60.0
 	options(digits.secs=9)
@@ -242,6 +279,7 @@ calc_OI_by_time_buckets <- function(interval
   price_volatilities <- vector()
 	price_returns_finer_grained <- vector()
 	gaussian_sigma_vector <- vector()
+  quotes_vector <- vector()
   first_record <- T
   i <- 1
   j <- 0
@@ -252,18 +290,26 @@ calc_OI_by_time_buckets <- function(interval
   use_quotes <- F
   q <- 0
   while (i+q != length(trades[,1])){
-    print(paste("I&Q: ", i, q))
+    #print(paste("I&Q: ", i, q))
     type <- trades[i+q,"type"]
+    
     if (type == 'Q'){ # This is a Quote
       prev_symbol <- 'Q'
       prev_bid <- trades[i+q,"bid"]
       prev_ask <- trades[i+q,"ask"]
       q <- q+1
+      quotes_vector <- c(quotes_vector, (prev_bid + prev_ask)/2)
+      if (use_quotes_for_price_change){
+        entries <- length(quotes_vector)
+        if (entries > L){
+          quotes_vector <- quotes_vector[2:entries]
+        }
+      }
       next
     }
     else{ # This is a trade
       if (prev_symbol != 'X'){ use_quotes <- T }
-      print("Parsing Trades")
+      #print("Parsing Trades")
     }
     j <- j+1
     
@@ -271,8 +317,8 @@ calc_OI_by_time_buckets <- function(interval
 		volume <- as.numeric(trades[i+q,"size"])
 		price <- as.numeric(trades[i+q,"price"])
     
-    print(paste("SIZE: ", volume))
-    print(paste("Cum Vol: ", volume_count))
+    #print(paste("SIZE: ", volume))
+    #print(paste("Cum Vol: ", volume_count))
 		if (first_record){ #first record
 			start_t <- time
 			prev_price <- price
@@ -299,11 +345,15 @@ calc_OI_by_time_buckets <- function(interval
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
 			}
       else{
+        print(paste("DEBUG: ", prev_bid, prev_ask, price))
+        
         if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
-                       use_quotes, prev_bid, prev_ask)){				
-                b <- 1.0
+                       use_quotes, prev_bid, prev_ask)){	
+          print(paste("DEBUG: BUY"))      
+          b <- 1.0
         }else{
-                b <- -1.0
+          print(paste("DEBUG: SELL"))
+          b <- -1.0
         }
       }
 			OI <- OI + b*residual_volume
@@ -315,7 +365,12 @@ calc_OI_by_time_buckets <- function(interval
 			  i <- i+1
 			}
       
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
+      if (use_quotes_for_price_change){
+        price_returns <- c(price_returns, log((prev_bid+prev_ask)/2) - log(EMA(quotes_vector, L)[L])) 
+      }else{
+        price_returns <- c(price_returns, log(price/prev_bucket_price))
+      }
+      
 			price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
       #print(paste("Vector Size: ", length(price_returns_finer_grained)))
       #print(paste("VAR: ", var(price_returns_finer_grained)))
@@ -348,8 +403,10 @@ calc_OI_by_time_buckets <- function(interval
 		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
 			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
                      use_quotes, prev_bid, prev_ask)){
+			  print(paste("DEBUG: ", prev_bid, prev_ask))
 				OI <- OI + bucket_volume
 			}else{
+        print(paste("DEBUG: SELL"))
 				OI <- OI - bucket_volume
 			}
 			bucket_volume <- 0.0 #reset
