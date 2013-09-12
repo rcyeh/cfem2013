@@ -6,24 +6,42 @@ qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 2
 
 hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 
-assign_buy <- function(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule){
-  p <- 0.0
-  prev_p <- 0.0
-  if (use_sub_penny_rule){
-    p <- price
-    prev_p <- prev_price
-  }else{
-    p<-round(price,2)
-    prev_p <- round(prev_price,2)
+assign_buy_bid_ask <- function(bid, ask, price){
+  bid_diff <- price - bid
+  ask_diff <- price - ask
+  if (bid_diff < ask_diff){ # trade price closer to bid => taking the bid => assign sell
+    return (F)
   }
-  if (use_momentum_rule && p==prev_p){
-    if (prev_prev_price < p){
-      return (F)
+  else{ # trade price closer to ask => assign buy
+    return (T)
+  }
+}
+
+assign_buy <- function(prev_prev_price, prev_price, price, 
+                       use_sub_penny_rule, use_momentum_rule, 
+                       use_quote, bid, ask){
+  if (use_quote){
+    return (assign_buy_bid_ask(bid, ask, price))
+  }
+  else{
+    p <- 0.0
+    prev_p <- 0.0
+    if (use_sub_penny_rule){
+      p <- price
+      prev_p <- prev_price
     }else{
-      return (T)
+      p<-round(price,2)
+      prev_p <- round(prev_price,2)
     }
-  }else{
-    return (p>=prev_p)
+    if (use_momentum_rule && p==prev_p){
+      if (prev_prev_price < p){
+        return (F)
+      }else{
+        return (T)
+      }
+    }else{
+      return (p>=prev_p)
+    }
   }
 }
 
@@ -227,16 +245,34 @@ calc_OI_by_time_buckets <- function(interval
   first_record <- T
   i <- 1
   j <- 0
-  
-  while (i != length(trades[,1])){   
+  sigma <-0.0
+  prev_symbol <- 'X'
+  prev_bid <- 0.0
+  prev_ask <- 0.0
+  use_quotes <- F
+  q <- 0
+  while (i+q != length(trades[,1])){
+    print(paste("I&Q: ", i, q))
+    type <- trades[i+q,"type"]
+    if (type == 'Q'){ # This is a Quote
+      prev_symbol <- 'Q'
+      prev_bid <- trades[i+q,"bid"]
+      prev_ask <- trades[i+q,"ask"]
+      q <- q+1
+      next
+    }
+    else{ # This is a trade
+      if (prev_symbol != 'X'){ use_quotes <- T }
+      print("Parsing Trades")
+    }
     j <- j+1
-    #print(paste("I: ", i))
-		time <- strptime(trades[i,"time"],"%H:%M:%OS")
-		volume <- as.numeric(trades[i,"size"])
-		price <- as.numeric(trades[i,"price"])
     
-    #print(paste("SIZE: ", volume))
-    #print(paste("Cum Vol: ", volume_count))
+		time <- strptime(trades[i+q,"time"],"%H:%M:%OS")
+		volume <- as.numeric(trades[i+q,"size"])
+		price <- as.numeric(trades[i+q,"price"])
+    
+    print(paste("SIZE: ", volume))
+    print(paste("Cum Vol: ", volume_count))
 		if (first_record){ #first record
 			start_t <- time
 			prev_price <- price
@@ -254,7 +290,7 @@ calc_OI_by_time_buckets <- function(interval
     
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 			residual_volume <- bucket_volume_size - bucket_volume
-      #print("filled one bucket")
+      print("filled one bucket")
 			b <- 1.0
 			if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
@@ -263,7 +299,8 @@ calc_OI_by_time_buckets <- function(interval
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
 			}
       else{
-        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){				
+        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                       use_quotes, prev_bid, prev_ask)){				
                 b <- 1.0
         }else{
                 b <- -1.0
@@ -272,7 +309,7 @@ calc_OI_by_time_buckets <- function(interval
 			OI <- OI + b*residual_volume
       #print(paste("Updating OI: ", OI, b, residual_volume))
 			if (volume_count + volume > bucket_volume_size){ #split order
-				trades[i,"size"] <- volume_count + volume - bucket_volume_size
+				trades[i+q,"size"] <- volume_count + volume - bucket_volume_size
 				#print(paste("Split volume to ", trades[i,"size"], "I: ", i))
 			}else{
 			  i <- i+1
@@ -287,10 +324,10 @@ calc_OI_by_time_buckets <- function(interval
       }
       if (signed){
         OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
-        print (paste("SOI is: ",OI))
+        #print (paste("SOI is: ",OI))
       }else{
         OI_buckets <- c(OI_buckets, abs(OI / bucket_volume_size)) #update OI_bucket 
-        print (paste("OI is: ",OI))
+        #print (paste("OI is: ",OI))
       }
 			
 			OI <- 0.0
@@ -309,7 +346,8 @@ calc_OI_by_time_buckets <- function(interval
     
 		#TR-VPIN time interval is reached, update OI vector
 		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
-			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)){
+			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                     use_quotes, prev_bid, prev_ask)){
 				OI <- OI + bucket_volume
 			}else{
 				OI <- OI - bucket_volume
