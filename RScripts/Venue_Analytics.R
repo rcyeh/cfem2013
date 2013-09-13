@@ -1,23 +1,22 @@
 library(rhdf5)
 library(zoo)
 library(TTR)
-library(ggplot)
 library(ggplot2)
 library(rJava)
 library(scales)
 library(iplots)
 
 #change path to point to the R dir
-setwd("C:/cfem2013/RScripts")
+setwd("C:/Users/JiongF/Desktop/Code")
 
-#Get list of tickers
-#Get list from list of nodes in hdf5 cols, then convert to a horizontal list
-#tickers <- t(list(h5ls("ticks.20130423.h5")[2])[[1]])
+#Flag to indicate whether we want to perform analysis on all tickers
+alltickers = 1
 
+if(alltickers == 0){
 #Change symbol to fetch different symbol data
-symbol = 'MSFT'
+symbol = 'CSCO'
 
-a <- h5read("ticks.20130424.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
+a <- h5read("ticks.20130423.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
 
@@ -28,35 +27,74 @@ trades$time <- as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,
 
 #break into three group 9:40 and 15:50, NYC time
 # or convert into UTC 13:40 and UTC 19:50 
+strt <- as.POSIXct('23/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
 mid_day_start <- as.POSIXct('23/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
 mid_day_end <- as.POSIXct('23/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
-early <- as.POSIXct('23/04/2013 12:10:00', format = "%d/%m/%Y %H:%M:%S")
-late <- as.POSIXct('23/04/2013 21:05:00', format = "%d/%m/%Y %H:%M:%S")
-trades$timegrp[trades$time >= late ] = 'trade_startend'
-trades$timegrp[mid_day_end <= trades$time & trades$time < late] = 'afternoon'
-trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'midday'
-trades$timegrp[early <= trades$time & trades$time < mid_day_start] = 'morning'
-trades$timegrp[trades$time < early ] = 'trade_startend'
+ed <- as.POSIXct('23/04/2013 20:00:00', format = "%d/%m/%Y %H:%M:%S")
+
+trades$timegrp[strt <= trades$time & trades$time < mid_day_start] = 'Early'
+trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
+trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
+
+trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, size, exchange, timegrp))
+aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp), sum)
 
 #Make a plot of exchange vs timegrp vs (size of trades)
-dev.new()
-ggplot() +
-  geom_point(aes(x = timegrp,y = exchange,size = size),data=trades) +
-  scale_area(guide = guide_legend())
+#dev.new()
+#ggplot() +
+#  geom_point(aes(x = timegrp,y = exchange,size = size),data=trades) +
+#  scale_area(guide = guide_legend())
+}
 
-########################################################
-#Looking at prices
-trade_startend <- subset(trades, timegrp == 'trade_startend')
-afternoon <- subset(trades, timegrp == 'afternoon')
-midday <- subset(trades, timegrp == 'midday')
-morning <- subset(trades, timegrp == 'morning')
+if (alltickers == 1) {
+  #Get list of tickers
+  #Get list from list of nodes in hdf5 cols, then convert to a horizontal l
+  tickers <- list(h5ls("ticks.20130423.h5")[2])[[1]]
+  
+  #read in tickers to exchange
+  lookup <- read.table("Ticker-Exchange-Lookup.csv",header=T,sep=",",quote="\"")
+  
+  #Left outer join the two tables
+  ticker_with_exchange = merge(x = tickers, y = lookup, by = "name", all.x=TRUE)
+  
+  #Aggregate the stocks by exchange
+  A_Listed <- subset(ticker_with_exchange, Exchange == 'A', select=c('name'))
+  N_Listed <- subset(ticker_with_exchange, Exchange == 'N', select=c('name'))
+  P_Listed <- subset(ticker_with_exchange, Exchange == 'P', select=c('name'))
+  Q_Listed <- subset(ticker_with_exchange, Exchange == 'Q', select=c('name'))
+  Z_Listed <- subset(ticker_with_exchange, Exchange == 'Z', select=c('name'))
+  
+  #For each aggregate, perform analytics
+  #Change the A_Listed here to *_Listed to analyze on other data
+  l = c(1:dim(Q_Listed)[1])    #Change this line to change to your listing
+  collect <- data.frame()
+  for(ticker in l) {
+    symbol = Q_Listed[ticker,1]   #And change this line to change to your listing
+    print(symbol)
+    a <- h5read("ticks.20130423.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
+    trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
+    
+    if(dim(trades)[1]!=0) {
+      #If the filtered trade data is zero, which will happen for some unpopular stocks
+      #We will ignore those
+      trades$time <- as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
+    
+      #break into three group 9:40 and 15:50, NYC time
+      # or convert into UTC 13:40 and UTC 19:50 
+      strt <- as.POSIXct('23/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
+      mid_day_start <- as.POSIXct('23/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
+      mid_day_end <- as.POSIXct('23/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
+      ed <- as.POSIXct('23/04/2013 20:00:00', format = "%d/%m/%Y %H:%M:%S")
+      trades$timegrp[strt <= trades$time & trades$time < mid_day_start] = 'Early'
+      trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
+      trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
+      trades$cout = 1  #For debuggin only, feel free to ignore this
+      trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, symbol, size, exchange, timegrp, cout))
+      collect <- rbind(collect, trades)
+      }
+  }
+  aggregate(collect$size, by=list(exchange=collect$exchange, timegrp=collect$timegrp), sum)  
+  aggregate(collect$cout, by=list(exchange=collect$exchange, timegrp=collect$timegrp), sum) 
+}
 
-#Plot
-dev.new()
-ggplot() +
-  geom_point(aes(x = price,y = exchange),data=morning)
-
-
-#write.table(quotes,"quotes.csv")
-#write.table(trades,"trades.csv")
 
