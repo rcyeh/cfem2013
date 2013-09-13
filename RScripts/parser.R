@@ -335,7 +335,7 @@ calc_OI_by_time_buckets <- function(interval
     }
     
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
-			residual_volume <- bucket_volume_size - bucket_volume
+			residual_volume <- bucket_volume_size - volume_count#bucket_volume
       print("filled one bucket")
 			b <- 1.0
 			if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
@@ -345,7 +345,7 @@ calc_OI_by_time_buckets <- function(interval
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
 			}
       else{
-        print(paste("DEBUG: ", prev_bid, prev_ask, price))
+        #print(paste("DEBUG: ", prev_bid, prev_ask, price))
         
         if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
                        use_quotes, prev_bid, prev_ask)){	
@@ -357,6 +357,7 @@ calc_OI_by_time_buckets <- function(interval
         }
       }
 			OI <- OI + b*residual_volume
+      #print(paste("Plus total: ", OI, ", residual: ", residual_volume))
       #print(paste("Updating OI: ", OI, b, residual_volume))
 			if (volume_count + volume > bucket_volume_size){ #split order
 				trades[i+q,"size"] <- volume_count + volume - bucket_volume_size
@@ -386,6 +387,7 @@ calc_OI_by_time_buckets <- function(interval
       }
 			
 			OI <- 0.0
+      #print("Reset OI.")
 			bucket_volume <-0.0
 			volume_count <-0.0
 			start_t <-time
@@ -401,6 +403,7 @@ calc_OI_by_time_buckets <- function(interval
     
 		#TR-VPIN time interval is reached, update OI vector
 		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
+      print("filled one bin--->")
 			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
                      use_quotes, prev_bid, prev_ask)){
 			  print(paste("DEBUG: ", prev_bid, prev_ask))
@@ -409,6 +412,7 @@ calc_OI_by_time_buckets <- function(interval
         print(paste("DEBUG: SELL"))
 				OI <- OI - bucket_volume
 			}
+      #print(paste("Plus total-bin: ", OI, ", vol: ", bucket_volume))
 			bucket_volume <- 0.0 #reset
 			#volume_count <- volume_count + volume
 			start_t <- time
