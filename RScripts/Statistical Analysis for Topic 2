@@ -1,0 +1,106 @@
+########## Input Data ##########
+library(rhdf5)
+symbol = 'AAPL'
+setwd("C:/cfem/trunk/RScripts")
+a = h5read("ticks.20130424.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
+quotes = a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
+trades = a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
+trades$time = as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
+
+strt = as.POSIXct('23/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
+mid_day_start = as.POSIXct('23/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
+mid_day_end = as.POSIXct('23/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
+ed <- as.POSIXct('23/04/2013 20:00:00', format = "%d/%m/%Y %H:%M:%S")
+trades$timegrp[strt <= trades$time & trades$time < mid_day_start] = 'Early'
+trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
+trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
+trades = subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, size, exchange, timegrp, latency))
+aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp, latency=trades$latency), sum)
+trades = trades[-(which(is.na(trades$timegrp)==TRUE)),]
+head(trades)
+dim(trades)
+names(trades)
+
+
+
+########## 1. Contigency Analysis (exchange vs time) ##########
+# Cramer's V ranges from 0 to 1, and it is somewhat like Pearson's r correlation and we can interpret it as
+# >=0.25 (very strong relationship); 0.15-0.25 (strong relationship);
+# 0.11-0.15 (moderate relationship); 0.06-0.1 (weak relationship);
+# 0.01-0.05 (no relationship)
+
+Cramers_v = function(table){
+  chisq = chisq.test(table)$statistic[[1]]
+  nobs = length(exchange)
+  ncols = ncol(table)
+  nrows = nrow(table)
+  v = sqrt(chisq/(nobs*(min(ncols,nrows)-1))) 
+  return (v)
+}
+
+# Number of trades only
+attach(trades)
+table1 = table(exchange,timegrp)
+Cramers_v(table1)  # 0.0433153 - weakrelationship
+
+# trades size included
+table2 = xtabs(size ~ exchange+timegrp)
+Cramers_v(table2)  # 0.6954657 - highly strong relationship
+
+
+
+########## 2. Multinomial Logistic Regression (exchange vs latency) ##########
+library(nnet)
+mlr1 = multinom(exchange ~ latency)
+summary(mlr1)
+z1 = summary(mlr1)$coefficients/summary(mlr1)$standard.errors   # standardized coefficients
+p1 = (1-pnorm(abs(z1),0,1))/2  # 2-tailed z test
+
+mlr2 = multinom(exchange ~ latency + timegrp)
+summary(mlr2)
+z2 = summary(mlr2)$coefficients/summary(mlr2)$standard.errors   # standardized coefficients
+p2 = (1-pnorm(abs(z2),0,1))/2  # 2-tailed z test
+# http://www.ats.ucla.edu/stat/r/dae/mlogit.htm
+
+
+
+########## 3. Clustering ##########
+# k-means clustering (based on size, latency and times)
+n = dim(trades)[1]
+times=matrix(nrow=n)
+for (i in 1:n){
+  if (timegrp[i] == "Early"){
+    times[i] = 1
+  } else{
+    if (timegrp[i] == "Midday"){
+      times[i] = 2
+    } else {times[i] =3}
+  }
+}
+clus = cbind(trades,times)[,-c(1,3,4)]
+
+K_Means_CH = function(data,k){
+  km = kmeans(data,centers=k,iter.max=1000,alg="Lloyd")
+  CH = (km$betweenss/k-1)/((km$totss-km$betweens)/(n-k))
+  return(CH)
+}
+
+K_Means_CH(clus,2)  # n=2, CH=69779.33; for n=3,n=4, results don't converge
+km = kmeans(clus,centers=2,alg="Lloyd")
+cols = c("red","green")
+plot(clus,col=cols[km$cluster])
+points(km$centers,pch=9,cex=2,col=cols)
+detach(trades)
+
+library(lattice)
+attach(comp)
+comp = cbind(trades,times)[,-c(1,4)]
+xyplot(size~latency,group=exchange,cex=1.5)
+xyplot(size~times,group=exchange,cex=1.5)
+xyplot(latency~times,group=exchange,cex=1.5)
+detach(comp)
+
+
+########## PCA ##########
+pc.1 = prcomp(clus,scale.=T)
+summary(pc.1)
