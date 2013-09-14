@@ -423,10 +423,10 @@ calc_OI_by_time_buckets <- function(interval
 	return (OI_vs_delta_prices)
 }
 
-plot_model_stat<-function(xs, ys){
+plot_model_stat<-function(xs, ys,xlabb="x",ylabb="y",mmain =""){
   one_factor_model <- lm(ys~xs)
   print(summary(one_factor_model))
-  plot(xs, ys)
+  plot(xs, ys,xlab=xlabb,ylab=ylabb,main=mmain)
   abline(lm(ys~xs))
   return(one_factor_model)
 }
