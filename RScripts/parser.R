@@ -10,10 +10,13 @@ assign_buy_bid_ask <- function(bid, ask, price){
   bid_diff <- price - bid
   ask_diff <- price - ask
   if (abs(bid_diff) < abs(ask_diff)){ # trade price closer to bid => taking the bid => assign sell
-    return (F)
+    return (-1)
   }
-  else{ # trade price closer to ask => assign buy
-    return (T)
+  else if (abs(bid_diff) > abs(ask_diff)){ # trade price closer to ask => assign buy
+    return (1)
+  }
+  else{
+    return (0)
   }
 }
 
@@ -35,12 +38,20 @@ assign_buy <- function(prev_prev_price, prev_price, price,
     }
     if (use_momentum_rule && p==prev_p){
       if (prev_prev_price < p){
-        return (F)
+        return (-1)
+      }else if (prev_prev_price > p){
+        return (1)
       }else{
-        return (T)
+        return (0)
       }
     }else{
-      return (p>=prev_p)
+      if (p > prev_p){
+        return (1)
+      }else if (p < prev_p){
+        return (-1)
+      }else{
+        return (0)
+      }
     }
   }
 }
@@ -347,14 +358,8 @@ calc_OI_by_time_buckets <- function(interval
       else{
         #print(paste("DEBUG: ", prev_bid, prev_ask, price))
         
-        if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
-                       use_quotes, prev_bid, prev_ask)){	
-          print(paste("DEBUG: BUY"))      
-          b <- 1.0
-        }else{
-          print(paste("DEBUG: SELL"))
-          b <- -1.0
-        }
+        b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                       use_quotes, prev_bid, prev_ask)
       }
 			OI <- OI + b*residual_volume
       #print(paste("Plus total: ", OI, ", residual: ", residual_volume))
@@ -366,11 +371,7 @@ calc_OI_by_time_buckets <- function(interval
 			  i <- i+1
 			}
       
-      if (use_quotes_for_price_change){
-        price_returns <- c(price_returns, log((prev_bid+prev_ask)/2) - log(EMA(quotes_vector, L)[L])) 
-      }else{
-        price_returns <- c(price_returns, log(price/prev_bucket_price))
-      }
+			price_returns <- c(price_returns, (price-prev_bucket_price)/prev_bucket_price)
       
 			price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
       #print(paste("Vector Size: ", length(price_returns_finer_grained)))
@@ -404,14 +405,10 @@ calc_OI_by_time_buckets <- function(interval
 		#TR-VPIN time interval is reached, update OI vector
 		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
       print("filled one bin--->")
-			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
-                     use_quotes, prev_bid, prev_ask)){
-			  print(paste("DEBUG: ", prev_bid, prev_ask))
-				OI <- OI + bucket_volume
-			}else{
-        print(paste("DEBUG: SELL"))
-				OI <- OI - bucket_volume
-			}
+			b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                     use_quotes, prev_bid, prev_ask)
+			OI <- OI + b*bucket_volume
+
       #print(paste("Plus total-bin: ", OI, ", vol: ", bucket_volume))
 			bucket_volume <- 0.0 #reset
 			#volume_count <- volume_count + volume
