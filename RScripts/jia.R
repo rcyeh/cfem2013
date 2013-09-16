@@ -8,31 +8,43 @@ library(car)
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
+
+
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+
+SPY <- read.csv("hello.csv",header=TRUE,sep=" ")
+head(SPY)
+SPY$type = "T"
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(5,(SPY[-which(SPY$size > 10000),])[1:70000,],10000, F, L, T)
+SOI_buckets_delta_prices_big <- calc_OI_by_time_buckets(30,(SPY[-which(SPY$size > 20000),])[1:50000,],20000, F, L, T)
+
 L <- 50
 fixed_bin <- 200 
 
-time <- seq(10,30,10)
-bucket <- seq(1000,15000,1000)
-thres <- seq(1000,5000,1000)
+time <- seq(5,30,5)
+bucket <- seq(10000,50000,10000)
+thres <- 20000
 l_time <- length(time)
 l_bucket <- length(bucket)
 l_thres <- length(thres)
 R2_finer <- c()
-for(i in 1:l_bucket){
-  for(j in 1:l_time){
-    for( k in 1:l_thres){
+
+for(j in 1:l_time){
+  #for( k in 1:l_thres){
+    for(i in 1:l_bucket){
       bucket_size <- bucket[i]
       time_bin <- time[j]
       thres1 <- thres[k]
       #SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a[-which(a$size>thres1),],bucket_size, F, L, T, T, T, T)
-      SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades[-which(trades$size>thres1),],bucket_size, F, L, T)
+      SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,SPY[-which(SPY$size>thres1),][1:100000,],bucket_size, F, L, T)
       l_prices = length(SOI_buckets_delta_prices[,2])
-      R2_finer[paste(bucket[i],"_",time[j],"_",thres[k])] = summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3]))$r.squared
+      r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3]))$r.squared
+      print(paste(bucket[i],"_",time[j],"_",thres[k], ": ",r2))
+      R2_finer[paste(bucket[i],"_",time[j],"_",thres[k])] = r2
     }
-  }
+  #}
 }
 
 
@@ -49,6 +61,11 @@ plot(SOI_buckets_delta_prices[,1]*
        SOI_buckets_delta_prices[,3],SOI_buckets_delta_prices[,2],xlim=c(-4e-07,4e-07),ylim=c(-0.0018,0.0020))
 plot(SOI_buckets_delta_prices[,3],abs(SOI_buckets_delta_prices[,2]),xlim=c(0,4e-07),ylim=c(0,0.0025))
 
+ind = which(data_predict$BucketVol > 1e-06)
+data_predict_new <- data_predict[-ind,]
+scatterplotMatrix(~ SimpleR + SOI + BucketVol + SOIXBucketVol, data=data_predict_new, spread=FALSE,
+                  lty.smooth=2, main="Scatter Plot Matrix with Bucket 2000, Exclude trades>4000, time bin 30s")
+
 # Please uncomment to test the desired OI used by VPINs (TR_VPIN, FB_VPIN, bulk-volume TR, bulk-volume FB)
 
 # TR_VPIN
@@ -56,6 +73,14 @@ OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, 
 SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades[-which(trades$size>2000),],bucket_size, F, L, T)
 SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a[-which(a$size>2000),],bucket_size, F, L, T, T, T, T)
 
+
+l_trades = dim(trades)[1]
+indd = which(a$type == "T")
+ind = rep(0,3*l_trades)
+for ( i in 1:l_trades){
+  ind[(1+(i-1)*3):(3*i)] <- seq(indd[i]-1,indd[i]+1,1)
+}
+whatyouwant = a[ind,]
 #Test SIO
 
 lm1 <-lm(SOI_buckets_delta_prices[-c(1,2),2]~SOI_buckets_delta_prices[-c(l_prices,l_prices-1),1]+

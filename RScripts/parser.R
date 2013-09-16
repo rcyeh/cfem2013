@@ -347,7 +347,7 @@ calc_OI_by_time_buckets <- function(interval
     
 		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
 			residual_volume <- bucket_volume_size - volume_count#bucket_volume
-      print("filled one bucket")
+      #print("filled one bucket")
 			b <- 1.0
 			if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
@@ -404,7 +404,7 @@ calc_OI_by_time_buckets <- function(interval
     
 		#TR-VPIN time interval is reached, update OI vector
 		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
-      print("filled one bin--->")
+      #print("filled one bin--->")
 			b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
                      use_quotes, prev_bid, prev_ask)
 			OI <- OI + b*bucket_volume
