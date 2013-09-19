@@ -17,9 +17,11 @@ trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange
 SPY <- read.csv("hello.csv",header=TRUE,sep=" ")
 head(SPY)
 SPY$type = "T"
-SOI_buckets_delta_prices <- calc_OI_by_time_buckets(5,(SPY[-which(SPY$size > 10000),])[1:70000,],10000, F, L, T)
-SOI_buckets_delta_prices_big <- calc_OI_by_time_buckets(30,(SPY[-which(SPY$size > 20000),])[1:50000,],20000, F, L, T)
-
+#SOI_buckets_delta_prices <- calc_OI_by_time_buckets(5,(SPY[-which(SPY$size > 10000),])[1:70000,],10000, F, L, T)
+#SOI_buckets_delta_prices_big <- calc_OI_by_time_buckets(30,(SPY[-which(SPY$size > 20000),])[1:50000,],20000, F, L, T)
+SOI <- calc_SOI(30, SPY[1:100000,])
+SOI2 <- calc_SOI(120, SPY[1:100000,])
+SOI2 <- calc_SOI(360, SPY[-which(SPY$size>10000),][1:50000,])
 L <- 50
 fixed_bin <- 200 
 
@@ -47,7 +49,26 @@ for(j in 1:l_time){
   #}
 }
 
+time <- seq(30,180,30)
+thres <- seq(10000,20000,10000)
+l_time <- length(time)
+l_thres <- length(thres)
+R2_finer <- c()
+for( k in 1:l_thres){
+  for(j in 1:l_time){
+      time_bin <- time[j]
+      thres1 <- thres[k]
+      SOI <- calc_SOI(time_bin, SPY[-which(SPY$size>thres1),][1:20000,])
+      l_prices = length(SOI[,2])
+      #R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[-1,2] ~ EMA(SOI[-l_prices,1],1)+EMA(SOI[-l_prices,1],2)))$adj.r.squared
+      R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[,2] ~ SOI[,1]))$r.squared
+  }
+}
 
+sort(R2,decreasing = TRUE)[1:10]
+write.csv(sort(R2,decreasing =TRUE)[1:10],file="Lee_Ready_Forecast_AMZN_R2.csv")
+
+write.csv(sort(R2_finer,decreasing =TRUE)[1:10],file="AMZN predict using Richard method.csv")
 
 lm_lag = lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3])
 data_predict = data.frame(SimpleR = SOI_buckets_delta_prices[-1,2],SOI = SOI_buckets_delta_prices[-l_prices,1],
