@@ -1,12 +1,26 @@
-trades=read.csv("AAPL 20130424.csv",head=T)head(trades)
-dim(trades)
-names(trades)
+trades=read.csv("AAPL 20130424.csv",head=T)
+loc=as.character(trades$exchange)
+loc[loc=='D']='D2'
+loc[loc=='B']='O'
+loc[loc=='C']='O'
+loc[loc=='J']='O'
+loc[loc=='K']='O'
+loc[loc=='P']='O'
+loc[loc=='W']='O'
+loc[loc=='X']='O'
+loc[loc=='Y']='O'
+loc[loc=='Z']='O'
+
+trade=cbind(trades[,-c(1,2,5)],as.factor(loc))
+colnames(trade)[5]="exchange"
+head(trade)
 
 ########## 1. Contigency Analysis (exchange vs time) ##########
 # Cramer's V ranges from 0 to 1, and it is somewhat like Pearson's r correlation and we can interpret it as
 # >=0.25 (very strong relationship); 0.15-0.25 (strong relationship);
 # 0.11-0.15 (moderate relationship); 0.06-0.1 (weak relationship);
 # 0.01-0.05 (no relationship)
+library(vcd)
 
 Cramers_v = function(table){
   chisq = chisq.test(table)$statistic[[1]]
@@ -18,31 +32,43 @@ Cramers_v = function(table){
 }
 
 # Number of trades only
-attach(trades)
-table1 = table(exchange,timegrp)
-Cramers_v(table1)  # 0.0433153 - weakrelationship
+table1 = xtabs( ~ trade$exchange+trade$timegrp)[,c("Early","Midday","Late")]
+table1_freq = t(t(table1)/rowSums(t(table1)))
+Cramers_v(table1)  # 0.04198899 - weakrelationship
+mosaic(table1,shade=T,legend=T,main="Mosaic Plot for # of trades")
 
 # trades size included
-table2 = xtabs(size ~ exchange+timegrp)
-Cramers_v(table2)  # 0.6954657 - highly strong relationship
+table2 = xtabs(trade$size ~ trade$exchange+trade$timegrp)[,c("Early","Midday","Late")]
+table2_freq = t(t(table2)/rowSums(t(table2)))
+Cramers_v(table2)  # 0.6760487 - highly strong relationship
+mosaic(table2,shade=T,legend=T)
 
+# Block trades vs Non-block trades
+table3_1 = table1[1,]+table1[3,]+table1[4,]
+table3 = rbind(table3_1,table1[2,])[,c("Early","Midday","Late")]
+rownames(table3) = c("Non block trades","Block trades")
+table3_freq = t(t(table3)/rowSums(t(table3)))
+Cramers_v(table3)  # 0.04832802 - weakrelationship
+mosaic(table3,shade=T,legend=T)
+
+table4_1 = table2[1,]+table2[3,]+table2[4,]
+table4 = rbind(table4_1,table1[4,])[,c("Early","Midday","Late")]
+rownames(table4) = c("Non block trades","Block trades")
+table4_freq = t(t(table4)/rowSums(t(table4)))
+Cramers_v(table4)  # 0.02908549 - weakrelationship
+mosaic(table4,shade=T,legend=T)
 
 
 ########## 2. Multinomial Logistic Regression (exchange vs latency) ##########
 library(nnet)
-mlr1 = multinom(exchange ~ latency)
+mlr1 = multinom(exchange ~ timegrp,data=trade)
 summary(mlr1)
 z1 = summary(mlr1)$coefficients/summary(mlr1)$standard.errors   # standardized coefficients
 p1 = (1-pnorm(abs(z1),0,1))/2  # 2-tailed z test
 
-mlr2 = multinom(exchange ~ latency + timegrp)
-summary(mlr2)
-z2 = summary(mlr2)$coefficients/summary(mlr2)$standard.errors   # standardized coefficients
-p2 = (1-pnorm(abs(z2),0,1))/2  # 2-tailed z test
-
 
 ########## 3. Clustering ##########
-# k-means clustering (based on size, latency and times)
+# k-means clustering (based on size times)
 n = dim(trades)[1]
 times=matrix(nrow=n)
 for (i in 1:n){
