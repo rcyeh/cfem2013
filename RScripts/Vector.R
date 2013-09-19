@@ -8,17 +8,17 @@ library(iplots)
 library(plyr)
 
 #change path to point to the R dir
-setwd("C:/Users/JiongF/Desktop/Code")
+setwd("C:/cfem/trunk/RScripts")
 
   #Get list of tickers
   #Get list from list of nodes in hdf5 cols, then convert to a horizontal l
-  tickers <- list(h5ls("ticks.20130423.h5")[2])[[1]]
+  tickers <- list(h5ls("ticks.20130424.h5")[2])[[1]]
   
   #read in tickers to exchange
   lookup <- read.table("Ticker-Exchange-Lookup.csv",header=T,sep=",",quote="\"")
   
   #Left outer join the two tables
-  ticker_with_exchange = merge(x = tickers, y = lookup, by = "name", all.x=TRUE)
+  ticker_with_exchange = merge(x = tickers, y = lookup, by = "name")
   
   #Aggregate the stocks by exchange
   A_Listed <- subset(ticker_with_exchange, Exchange == 'A', select=c('name'))
@@ -43,20 +43,20 @@ setwd("C:/Users/JiongF/Desktop/Code")
     symbol = P_Listed[ticker]   #And change this line to change to your listing
     print(ticker)
     print(symbol)
-    a <- h5read("ticks.20130423.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
+    a <- h5read("ticks.20130424.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
     trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
     
     if(dim(trades)[1]!=0) {
       #If the filtered trade data is zero, which will happen for some unpopular stocks
       #We will ignore those
-      trades$time <- as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
+      trades$time <- as.POSIXct(paste('24/04/2013',substr(as.character(trades$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
       
       #break into three group 9:40 and 15:50, NYC time
       # or convert into UTC 13:40 and UTC 19:50 
-      strt <- as.POSIXct('23/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
-      mid_day_start <- as.POSIXct('23/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
-      mid_day_end <- as.POSIXct('23/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
-      ed <- as.POSIXct('23/04/2013 20:00:00', format = "%d/%m/%Y %H:%M:%S")
+      strt <- as.POSIXct('24/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
+      mid_day_start <- as.POSIXct('24/04/2013 13:40:00', format = "%d/%m/%Y %H:%M:%S")
+      mid_day_end <- as.POSIXct('24/04/2013 19:50:00', format = "%d/%m/%Y %H:%M:%S")
+      ed <- as.POSIXct('24/04/2013 20:00:00', format = "%d/%m/%Y %H:%M:%S")
       trades$timegrp[strt <= trades$time & trades$time < mid_day_start] = 'Early'
       trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
       trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
@@ -75,6 +75,6 @@ setwd("C:/Users/JiongF/Desktop/Code")
   one<-subset(fi,timegrp=="Early",select=c("exchange","symbol","x"))
   two<-subset(fi,timegrp=="Midday",select=c("exchange","symbol","x"))
   three<-subset(fi,timegrp=="Late",select=c("exchange","symbol","x"))
-  write.table(one, "early.csv", sep = "\t")
-  write.table(one, "midday.csv", sep = "\t")
-  write.table(one, "late.csv", sep = "\t")
+  write.table(one, "early1.csv", sep = "\t")
+  write.table(two, "midday1.csv", sep = "\t")
+  write.table(three, "late1.csv", sep = "\t")
