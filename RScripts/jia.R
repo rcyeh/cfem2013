@@ -60,10 +60,16 @@ for( k in 1:l_thres){
       thres1 <- thres[k]
       SOI <- calc_SOI(time_bin, SPY[-which(SPY$size>thres1),][1:20000,])
       l_prices = length(SOI[,2])
-      #R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[-1,2] ~ EMA(SOI[-l_prices,1],1)+EMA(SOI[-l_prices,1],2)))$adj.r.squared
-      R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[,2] ~ SOI[,1]))$r.squared
+      R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[-1,2] ~ EMA(SOI[-l_prices,1],1)+EMA(SOI[-l_prices,1],2)))$adj.r.squared
+      #R2_finer[paste(time[j],"_",thres[k])] <- summary(lm(SOI[,2] ~ SOI[,1]))$r.squared
   }
 }
+
+par(mfrow=c(1,3))
+plot(SOI[,1],SOI[,2],xlab="SOI",ylab="return",main="SPY time bin concurrent (120-10000)")
+plot(SOI1[,1],SOI1[,2],xlab="SOI",ylab="return",main="SPY time bin concurrent (30-10000)")
+plot(SOI2[,1],SOI2[,2],xlab="SOI",ylab="return",main="SPY time bin concurrent (60-10000)")
+
 
 sort(R2,decreasing = TRUE)[1:10]
 write.csv(sort(R2,decreasing =TRUE)[1:10],file="Lee_Ready_Forecast_AMZN_R2.csv")
