@@ -11,11 +11,11 @@ library(plyr)
 setwd("C:/Users/JiongF/Desktop/Code")
 
 #Flag to indicate whether we want to perform analysis on all tickers
-alltickers = 1
+alltickers = 0
 
 if(alltickers == 0){
    #Change symbol to fetch different symbol data
-   symbol = 'CSCO'
+   symbol = 'YHOO'
 
    a <- h5read("ticks.20130423.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
    quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
@@ -23,9 +23,12 @@ if(alltickers == 0){
 
    #Bid_ask Spread
    quotes$bid_ask = quotes$ask - quotes$bid
-
+   quotes$mid = (quotes$ask + quotes$bid)/2
+   
    trades$time <- as.POSIXct(paste('23/04/2013',substr(as.character(trades$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
-
+   quotes$time <- as.POSIXct(paste('23/04/2013',substr(as.character(quotes$time),1,11)), format = "%d/%m/%Y %H:%M:%S") 
+   
+   
    #break into three group 9:40 and 15:50, NYC time
    # or convert into UTC 13:40 and UTC 19:50 
    strt <- as.POSIXct('23/04/2013 13:30:00', format = "%d/%m/%Y %H:%M:%S")
@@ -37,15 +40,37 @@ if(alltickers == 0){
    trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
    trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
 
-   trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, size, exchange, timegrp))
-   aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp), sum)
+   trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, size, price, exchange, timegrp))
 
    #Make a plot of exchange vs timegrp vs (size of trades)
    #dev.new()
    #ggplot() +
    #  geom_point(aes(x = timegrp,y = exchange,size = size),data=trades) +
    #  scale_area(guide = guide_legend())
-   #for()
+   
+   time<-c(0,trades$time)
+   mid = c()
+   for(i in c(2:length(time)))
+   {
+     print(i)
+     j = i-1
+     if(time[i]==time[j])  #If trade time same as the previous trade result, just copy the result
+     {
+       mid <- c(mid, tail(mid,n=1)) 
+     }else   {#If not, get the most prevailing bid and ask, and compute the mid from it
+       tmp <- sort(table(quotes$bid[  time[j]<quotes$time & quotes$time<time[i]  ]),decreasing=TRUE)[1]
+       if(is.na(tmp)){
+         mid <- c(mid, tail(mid,n=1))   
+       }else{
+         prevail_bid <- as.numeric(names(tmp))
+         prevail_ask <- as.numeric(names(tmp))
+         mid <- c(mid, (prevail_bid+prevail_ask)/2)
+       }
+     }
+   }
+   trades<-cbind(trades, mid)
+   trades$exchange[(trades$mid-0.0001)<trades$price & trades$price<(trades$mid+0.0001) & trades$exchange=='D'] = 'D1'
+   aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp), sum)
 }
 
 if (alltickers == 1) {
