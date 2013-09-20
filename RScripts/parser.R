@@ -224,16 +224,16 @@ calc_OI_by_time_buckets <- function(interval
   prev_bid <- 0.0
   prev_ask <- 0.0
   use_quotes <- F
-  q <- 0
-  while (i+q != length(trades[,1])){
-    #print(paste("I&Q: ", i, q))
-    type <- trades[i+q,"type"]
+  qc <- 0; trlen <- length(trades[,1])
+  while (i+qc <= trlen){
+    #print(paste("I&Q: ", i, qc))
+    type <- trades$type[i+qc]
     
     if (type == 'Q'){ # This is a Quote
       prev_symbol <- 'Q'
-      prev_bid <- trades[i+q,"bid"]
-      prev_ask <- trades[i+q,"ask"]
-      q <- q+1
+      prev_bid <- trades$bid[i+qc]
+      prev_ask <- trades$ask[i+qc]
+      qc <- qc+1
       next
     }
     else{ # This is a trade
@@ -242,14 +242,14 @@ calc_OI_by_time_buckets <- function(interval
     }
     j <- j+1
     
-    time <- strptime(trades[i+q,"time"],"%H:%M:%OS")
-    volume <- as.numeric(trades[i+q,"size"])
-    price <- as.numeric(trades[i+q,"price"])
+    tm <- trades$time[i+qc]
+    volume <- trades$size[i+qc]
+    price <- trades$price[i+qc]
     
     #print(paste("SIZE: ", volume))
     #print(paste("Cum Vol: ", volume_count))
     if (first_record){ #first record
-      start_t <- time
+      start_t <- tm
       prev_price <- price
       prev_prev_price <- price
       prev_bucket_price <- price
@@ -265,12 +265,12 @@ calc_OI_by_time_buckets <- function(interval
     
     if (volume_count + volume >= bucket_volume_size){ #filled one bucket
       residual_volume <- bucket_volume_size - volume_count#bucket_volume
-      print("filled one bucket")
+      #print("filled one bucket")
       b <- 1.0
       if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
         #print(gaussian_sigma_vector)
-        print("gaussian b")
+        #print("gaussian b")
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
       }
       else{
@@ -283,7 +283,7 @@ calc_OI_by_time_buckets <- function(interval
       #print(paste("Plus total: ", OI, ", residual: ", residual_volume))
       #print(paste("Updating OI: ", OI, b, residual_volume))
       if (volume_count + volume > bucket_volume_size){ #split order
-        trades[i+q,"size"] <- volume_count + volume - bucket_volume_size
+        trades$size[i+qc] <- volume_count + volume - bucket_volume_size
         #print(paste("Split volume to ", trades[i,"size"], "I: ", i))
       }else{
         i <- i+1
@@ -297,19 +297,19 @@ calc_OI_by_time_buckets <- function(interval
       if ((j %% L) == 0){ # using L number of buckets
         price_returns_finer_grained <- vector()
       }
-      if (signed){
+      #if (signed){
         OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
         #print (paste("SOI is: ",OI))
-      }else{
-        OI_buckets <- c(OI_buckets, abs(OI / bucket_volume_size)) #update OI_bucket 
+      #}else{
+      # OI_buckets <- c(OI_buckets, abs(OI / bucket_volume_size)) #update OI_bucket 
         #print (paste("OI is: ",OI))
-      }
+      #}
       
       OI <- 0.0
       #print("Reset OI.")
       bucket_volume <-0.0
       volume_count <-0.0
-      start_t <-time
+      start_t <-tm
       prev_prev_price <- prev_price
       prev_price <- price
       prev_bucket_price <- price
@@ -321,8 +321,8 @@ calc_OI_by_time_buckets <- function(interval
     }
     
     #TR-VPIN time interval is reached, update OI vector
-    if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
-      print("filled one bin--->")
+    if((tm - start_t) > m_interval){ 
+      #print("filled one bin--->")
       b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
                       use_quotes, prev_bid, prev_ask)
       OI <- OI + b*bucket_volume
@@ -330,13 +330,16 @@ calc_OI_by_time_buckets <- function(interval
       #print(paste("Plus total-bin: ", OI, ", vol: ", bucket_volume))
       bucket_volume <- 0.0 #reset
       #volume_count <- volume_count + volume
-      start_t <- time
+      start_t <- tm
       prev_prev_price <- prev_price
       prev_price <- price
     }
     i <- i+1
   }
   
+  if (signed){
+	OI_buckets = abs(OI_buckets);
+  }
   OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
   return (OI_vs_delta_prices)
 }
