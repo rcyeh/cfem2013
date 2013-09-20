@@ -202,20 +202,20 @@ calc_OI_by_time_buckets <- function(interval
                                     , signed=F
                                     , use_momentum_rule = T
                                     , use_sub_penny_rule = T
-                                    ) {
-	m_interval <- interval / 60.0
-	options(digits.secs=9)
-	start_t <- 0
-	prev_price <- 0
+) {
+  m_interval <- interval / 60.0
+  options(digits.secs=9)
+  start_t <- 0
+  prev_price <- 0
   prev_bucket_price <- 0.0
-	bucket_volume <- 0.0
-	volume_count <- 0.0
-	OI <- 0.0
-	OI_buckets <- vector()
+  bucket_volume <- 0.0
+  volume_count <- 0.0
+  OI <- 0.0
+  OI_buckets <- vector()
   price_returns <- vector()
   price_volatilities <- vector()
-	price_returns_finer_grained <- vector()
-	gaussian_sigma_vector <- vector()
+  price_returns_finer_grained <- vector()
+  gaussian_sigma_vector <- vector()
   first_record <- T
   i <- 1
   j <- 0
@@ -242,59 +242,60 @@ calc_OI_by_time_buckets <- function(interval
     }
     j <- j+1
     
-		time <- strptime(trades[i+q,"time"],"%H:%M:%OS")
-		volume <- as.numeric(trades[i+q,"size"])
-		price <- as.numeric(trades[i+q,"price"])
+    time <- strptime(trades[i+q,"time"],"%H:%M:%OS")
+    volume <- as.numeric(trades[i+q,"size"])
+    price <- as.numeric(trades[i+q,"price"])
     
     #print(paste("SIZE: ", volume))
     #print(paste("Cum Vol: ", volume_count))
-		if (first_record){ #first record
-			start_t <- time
-			prev_price <- price
+    if (first_record){ #first record
+      start_t <- time
+      prev_price <- price
       prev_prev_price <- price
       prev_bucket_price <- price
       first_record <- F
-		}
+    }
     
-		price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
     gaussian_sigma_vector <- c(gaussian_sigma_vector, price-prev_price)
     entries <- length(gaussian_sigma_vector)
     if (entries > L){
       gaussian_sigma_vector <- gaussian_sigma_vector[2:entries]
     }
     
-		if (volume_count + volume >= bucket_volume_size){ #filled one bucket
-			residual_volume <- bucket_volume_size - volume_count
+    if (volume_count + volume >= bucket_volume_size){ #filled one bucket
+      residual_volume <- bucket_volume_size - volume_count#bucket_volume
       print("filled one bucket")
-			b <- 1.0
-			if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
+      b <- 1.0
+      if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
         #print(gaussian_sigma_vector)
         print("gaussian b")
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
-			}
-      else{
-        
-        b <-assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
-                       use_quotes, prev_bid, prev_ask)
       }
-			OI <- OI + b*residual_volume
+      else{
+        #print(paste("DEBUG: ", prev_bid, prev_ask, price))
+        
+        b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                        use_quotes, prev_bid, prev_ask)
+      }
+      OI <- OI + b*residual_volume
       #print(paste("Plus total: ", OI, ", residual: ", residual_volume))
       #print(paste("Updating OI: ", OI, b, residual_volume))
-			if (volume_count + volume > bucket_volume_size){ #split order
-				trades[i+q,"size"] <- volume_count + volume - bucket_volume_size
-				#print(paste("Split volume to ", trades[i,"size"], "I: ", i))
-			}else{
-			  i <- i+1
-			}
-
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
+      if (volume_count + volume > bucket_volume_size){ #split order
+        trades[i+q,"size"] <- volume_count + volume - bucket_volume_size
+        #print(paste("Split volume to ", trades[i,"size"], "I: ", i))
+      }else{
+        i <- i+1
+      }
       
-			price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
+      price_returns <- c(price_returns, (price-prev_bucket_price)/prev_bucket_price)
+      
+      price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
       #print(paste("Vector Size: ", length(price_returns_finer_grained)))
       #print(paste("VAR: ", var(price_returns_finer_grained)))
       if ((j %% L) == 0){ # using L number of buckets
-			  price_returns_finer_grained <- vector()
+        price_returns_finer_grained <- vector()
       }
       if (signed){
         OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
@@ -303,46 +304,43 @@ calc_OI_by_time_buckets <- function(interval
         OI_buckets <- c(OI_buckets, abs(OI / bucket_volume_size)) #update OI_bucket 
         #print (paste("OI is: ",OI))
       }
-			
-			OI <- 0.0
+      
+      OI <- 0.0
       #print("Reset OI.")
-			bucket_volume <-0.0
-			volume_count <-0.0
-			start_t <-time
-			prev_prev_price <- prev_price
+      bucket_volume <-0.0
+      volume_count <-0.0
+      start_t <-time
+      prev_prev_price <- prev_price
       prev_price <- price
       prev_bucket_price <- price
-			next
-		}
-		else{
-			bucket_volume <- bucket_volume + volume
+      next
+    }
+    else{
+      bucket_volume <- bucket_volume + volume
       volume_count <- volume_count + volume
-		}
+    }
     
-		#TR-VPIN time interval is reached, update OI vector
-		if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
+    #TR-VPIN time interval is reached, update OI vector
+    if(((time - start_t) > m_interval) || (i==length(trades[,1]))){ 
       print("filled one bin--->")
-			if (assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
-                     use_quotes, prev_bid, prev_ask)){
-			  print(paste("DEBUG: ", prev_bid, prev_ask))
-				OI <- OI + bucket_volume
-			}else{
-        print(paste("DEBUG: SELL"))
-				OI <- OI - bucket_volume
-			}
+      b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule,
+                      use_quotes, prev_bid, prev_ask)
+      OI <- OI + b*bucket_volume
+      
       #print(paste("Plus total-bin: ", OI, ", vol: ", bucket_volume))
-			bucket_volume <- 0.0 #reset
-			#volume_count <- volume_count + volume
-			start_t <- time
-			prev_prev_price <- prev_price
-			prev_price <- price
-		}
+      bucket_volume <- 0.0 #reset
+      #volume_count <- volume_count + volume
+      start_t <- time
+      prev_prev_price <- prev_price
+      prev_price <- price
+    }
     i <- i+1
-	}
+  }
   
   OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
-	return (OI_vs_delta_prices)
+  return (OI_vs_delta_prices)
 }
+
 
 function(xs, ys,xlabb="x",ylabb="y",mmain =""){
   one_factor_model <- lm(ys~xs)
