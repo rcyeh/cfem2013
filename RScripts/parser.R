@@ -46,9 +46,9 @@ assign_buy <- function(prev_prev_price, prev_price, price,
       }
     }else{
       if (p > prev_p){
-        return (1)
-      }else if (p < prev_p){
         return (-1)
+      }else if (p < prev_p){
+        return (1)
       }else{
         return (0)
       }
@@ -90,25 +90,25 @@ calc_SOI <- function(interval, trades){
   prev_symbol <- 'X'
   first_record <- T
   use_quotes <- F
-  q <- 0
+  qc <- 0
   i <- 1
   total_volume <- 0.0
   
-  while (i+q != length(trades[,1])){
+  while (i+qc != length(trades[,1])){
     #print(paste("I&Q: ", i, q))
-    type <- trades[i+q,"type"]
+    type <- trades$type[i+qc]
     
     if (type == 'Q'){ # This is a Quote
       prev_symbol <- 'Q'
-      prev_bid <- trades[i+q,"bid"]
-      prev_ask <- trades[i+q,"ask"]
-      q <- q+1
+      prev_bid <- trades$bid[i+qc]
+      prev_ask <- trades$ask[i+qc]
+      qc <- qc+1
       next
     }
     else{ # This is a trade
       if (first_record){ #first record
-        price <- as.numeric(trades[i+q,"price"])
-        start_t <- strptime(trades[i+q,"time"],"%H:%M:%OS")
+        price <- trades$price[i+qc]
+        start_t <- trades$time[i+qc]
         prev_price <- price
         prev_prev_price <- price
         prev_bucket_price <- price
@@ -117,9 +117,9 @@ calc_SOI <- function(interval, trades){
       if (prev_symbol != 'X'){ use_quotes <- T }
     }
     
-    time <- strptime(trades[i+q,"time"],"%H:%M:%OS")
-    volume <- as.numeric(trades[i+q,"size"])
-    price <- as.numeric(trades[i+q,"price"])
+    time <- trades$time[i+qc]
+    volume <- trades$size[i+qc]
+    price <- trades$price[i+qc]
     
     b <- assign_buy(prev_prev_price, prev_price, price, T, T, use_quotes, prev_bid, prev_ask)
     
