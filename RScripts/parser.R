@@ -6,6 +6,13 @@ qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 2
 
 hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 
+delay_quotes_xms <- function(data_a, delay_time){
+  options(digits.secs=6)
+  data_a$time <- strptime(data_a$time,"%H:%M:%OS")
+  data_a[data_a$type == 'Q',]$time <- data_a[data_a$type == 'Q',]$time + delay_time
+  return(data_a[with(data_a, order(time)), ])
+}
+
 assign_buy_bid_ask <- function(bid, ask, price){
   bid_diff <- price - bid
   ask_diff <- price - ask
@@ -46,9 +53,9 @@ assign_buy <- function(prev_prev_price, prev_price, price,
       }
     }else{
       if (p > prev_p){
-        return (1)
-      }else if (p < prev_p){
         return (-1)
+      }else if (p < prev_p){
+        return (1)
       }else{
         return (0)
       }
