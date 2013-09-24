@@ -267,7 +267,7 @@ calc_OI_by_time_buckets <- function(interval
     }
     j <- j+1
     
-    tm <- strptime(trades$time[i+qc],"%H:%M:%OS")#trades$time[i+qc]
+    tm <- trades$time[i+qc] #just remember to format time before hand
     volume <- trades$size[i+qc]
     price <- trades$price[i+qc]
     
@@ -387,7 +387,7 @@ delay_quotes_xms <- function(data_a, delay_time){
 }
 
 filter_trades_quotes <-function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
-  
+  a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
   trades <- trades[-which(trades$size>volume_limit)]
   #potential trades to exclude
@@ -403,4 +403,52 @@ filter_trades_quotes <-function(a, volume_limit=10000){ #designed to reduce the 
   trades_quotes <- a[ind,]
   trades_quotes <- trades_quotes[-trades_exc_ind,]
   return (trades_quotes)
+}
+
+filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
+  a$time <- strptime(a$time,"%H:%M:%OS")
+  trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|bid_size|bid|ask|ask_size|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+  quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|bid_size|bid|ask|ask_size|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+  
+  trades <- trades[-which(trades$size>volume_limit)]
+  l_trades = dim(trades)[1]
+  ##############3
+  for(j in 1:l_trades){
+  time_stamp <- trades$time[j]
+  if( j == 1){
+    
+    start <- min(which(quotes$time>time_stamp-time_decay))
+    
+  }
+  #start <- 
+  
+  }
+  ema_quotes_bid <- vector()
+  ema_quotes_ask <- vector()
+  time_vec <- vector()
+  indd = which(a$type == "T")
+  
+  j <- 0
+  for ( i in indd ){
+    back <- max(1,i-1000)
+    a_m <- a[a$type == "Q",]
+    a_mod <- a_m[back:i,]
+
+    j <- j+1
+    time_stamp <- a$time[i]
+    print(j)
+    within_range_quotes <- a_mod[which(a_mod$time > time_stamp - time_decay),]
+    n <- dim(within_range_quotes)[1]
+    #print(n)
+    ema_quotes_bid[j] <- EMA(within_range_quotes$bid, n)[n]
+    ema_quotes_ask[j] <- EMA(within_range_quotes$ask, n)[n]
+    time_vec[j] <- time_stamp + time_decay/2
+  }
+
+  quotes[1:length(l_trades)]$bid <- ema_quotes_bid
+  quotes[1:length(l_trades)]$ask <- ema_quotes_ask
+  quotes[1:length(l_trades)]$time <- time_vec
+  trades_quotes <- rbind(trades, quotes[1:length(l_trades)])
+  
+  return(trades_quotes[with(trades_quotes, order(time)), ])
 }
