@@ -290,7 +290,7 @@ calc_OI_by_time_buckets <- function(interval
     
     if (volume_count + volume >= bucket_volume_size){ #filled one bucket
       residual_volume <- bucket_volume_size - volume_count
-      print("filled one bucket")
+      #print("filled one bucket")
       b <- 1.0
       if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
@@ -344,7 +344,7 @@ calc_OI_by_time_buckets <- function(interval
     
     #TR-VPIN time interval is reached, update OI vector
     if((tm - start_t) > m_interval){ 
-      print("filled one bin--->")
+      #print("filled one bin--->")
       if (use_quotes){
         b <- assign_buy((prev_prev_bid+prev_prev_ask)/2, (prev_bid+prev_ask)/2, (bid+ask)/2, use_sub_penny_rule, use_momentum_rule)
       }else{
@@ -387,7 +387,7 @@ delay_quotes_xms <- function(data_a, delay_time){
 }
 
 filter_trades_quotes <-function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
-  a$time <- strptime(a$time,"%H:%M:%OS")
+  #a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
   trades <- trades[-which(trades$size>volume_limit)]
   #potential trades to exclude
@@ -413,16 +413,16 @@ filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
   trades <- trades[-which(trades$size>volume_limit)]
   l_trades = dim(trades)[1]
   ##############3
-  for(j in 1:l_trades){
-  time_stamp <- trades$time[j]
-  if( j == 1){
+  #for(j in 1:l_trades){
+  #time_stamp <- trades$time[j]
+  #if( j == 1){
+  #  
+  #  start <- min(which(quotes$time>time_stamp-time_decay))
     
-    start <- min(which(quotes$time>time_stamp-time_decay))
-    
-  }
+  #}
   #start <- 
   
-  }
+  #}
   ema_quotes_bid <- vector()
   ema_quotes_ask <- vector()
   time_vec <- vector()
