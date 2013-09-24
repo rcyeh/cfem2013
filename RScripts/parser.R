@@ -130,7 +130,7 @@ calc_SOI <- function(interval, trades){
     price <- trades$price[i+qc]
     
     if (use_quotes){
-      b <- assign_buy((prev_prev_bid+prev_prev_ask)/2, (prev_bid+prev_ask)/2, (bid+ask)/2, T, T)
+      b <- assign_buy_bid_ask(bid, ask, price)
     }else{
       b <- assign_buy(prev_prev_price, prev_price, price, T, T)
     }
@@ -140,7 +140,8 @@ calc_SOI <- function(interval, trades){
     
     if(((time - start_t) > m_interval)|| ((i+q)==length(trades[,1]))){  
       print ("Filled one Bucket")
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
+      #price_returns <- c(price_returns, log(price/prev_bucket_price))
+      price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
       prev_bucket_price <- price
       OI_buckets <- c(OI_buckets, OI/total_volume)
       total_volume <- 0.0
@@ -214,6 +215,7 @@ calc_OI_by_time_buckets <- function(interval
                                     , signed=F
                                     , use_momentum_rule = T
                                     , use_sub_penny_rule = T
+                                    , use_trades = T
 ) {
   m_interval <- interval / 60.0
   options(digits.secs=9)
@@ -262,7 +264,7 @@ calc_OI_by_time_buckets <- function(interval
       next
     }
     else{ # This is a trade
-      if (prev_symbol != 'X'){ use_quotes <- T }
+      if (!use_trades){if (prev_symbol != 'X'){ use_quotes <- T }}
       #print("Parsing Trades")
     }
     j <- j+1
@@ -301,23 +303,20 @@ calc_OI_by_time_buckets <- function(interval
       else{
         #print(paste("DEBUG: ", prev_bid, prev_ask, price))
         if (use_quotes){
-          b <- assign_buy((prev_prev_bid+prev_prev_ask)/2, (prev_bid+prev_ask)/2, (bid+ask)/2, use_sub_penny_rule, use_momentum_rule)
-          #print(paste("DEBUG: ", (prev_prev_bid+prev_prev_ask)/2, (prev_bid+prev_ask)/2, (bid+ask)/2, "B: ", b))
+          b <- assign_buy_bid_ask(bid, ask, price)
         }else{
           b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)
         }
       }
       OI <- OI + b*residual_volume
-      #print(paste("Plus total: ", OI, ", residual: ", residual_volume))
-      #print(paste("Updating OI: ", OI, b, residual_volume))
       if (volume_count + volume > bucket_volume_size){ #split order
         trades$size[i+qc] <- volume_count + volume - bucket_volume_size
-        #print(paste("Split volume to ", trades[i,"size"], "I: ", i))
       }else{
         i <- i+1
       }
       
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
+      #price_returns <- c(price_returns, log(price/prev_bucket_price))
+      price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
       
       price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
 
@@ -346,7 +345,7 @@ calc_OI_by_time_buckets <- function(interval
     if((tm - start_t) > m_interval){ 
       print("filled one bin--->")
       if (use_quotes){
-        b <- assign_buy((prev_prev_bid+prev_prev_ask)/2, (prev_bid+prev_ask)/2, (bid+ask)/2, use_sub_penny_rule, use_momentum_rule)
+        b <- assign_buy_bid_ask(bid, ask, price)
       }else{
         b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)
       }
@@ -413,16 +412,16 @@ filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
   trades <- trades[-which(trades$size>volume_limit)]
   l_trades = dim(trades)[1]
   ##############3
-  for(j in 1:l_trades){
-  time_stamp <- trades$time[j]
-  if( j == 1){
+  #for(j in 1:l_trades){
+  #time_stamp <- trades$time[j]
+  #if( j == 1){
     
-    start <- min(which(quotes$time>time_stamp-time_decay))
+  #  start <- min(which(quotes$time>time_stamp-time_decay))
     
-  }
+  #}
   #start <- 
   
-  }
+  #}
   ema_quotes_bid <- vector()
   ema_quotes_ask <- vector()
   time_vec <- vector()
