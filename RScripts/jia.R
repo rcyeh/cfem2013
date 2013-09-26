@@ -25,28 +25,44 @@ SOI2 <- calc_SOI(360, SPY[-which(SPY$size>10000),][1:50000,])
 L <- 50
 fixed_bin <- 200 
 
-time <- seq(5,30,5)
-bucket <- seq(10000,50000,10000)
+##delay by latency
+a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+options(digits.secs=6)
+a$time<-strptime(a$time,"%H:%M:%OS")
+a$time <- a$time - a$latency*0.001
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135, trades[-which(trades$size > 1000),], 10000, F, L, T)
+
+
+
+time <- seq(30,180,30)
+bucket <- seq(1000,10000,1000)
 thres <- 20000
+decay <- seq()
+delay <- seq(0,0.1,0.005)
 l_time <- length(time)
 l_bucket <- length(bucket)
 l_thres <- length(thres)
+l_decay <- length(decay)
+l_delay <- length(delay)
 R2_finer <- c()
 
 for(j in 1:l_time){
-  #for( k in 1:l_thres){
+  for( k in 1:l_delay){
     for(i in 1:l_bucket){
       bucket_size <- bucket[i]
       time_bin <- time[j]
-      thres1 <- thres[k]
-      #SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a[-which(a$size>thres1),],bucket_size, F, L, T, T, T, T)
-      SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,SPY[-which(SPY$size>thres1),][1:100000,],bucket_size, F, L, T)
+      delay_1 <- delay[k]
+
+      #SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,filter_trades_quotes_EMA(a,time_decay),],bucket_size, F, L, T)
+      trades_quotes <- filter_trades_quotes(delay_quotes_xms(a, delay_1))
+      SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin, trades_quotes, bucket_size, F, L, T)
       l_prices = length(SOI_buckets_delta_prices[,2])
-      r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3]))$r.squared
-      print(paste(bucket[i],"_",time[j],"_",thres[k], ": ",r2))
-      R2_finer[paste(bucket[i],"_",time[j],"_",thres[k])] = r2
+      SOI_buckets_delta_prices[,2][1:2] <-0
+      r2 <- summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]))$r.squared
+      print(paste(bucket[i],"_",time[j],"_",delay[k], ": ",r2))
+      R2_finer[paste(bucket[i],"_",time[j],"_",delay[k])] = r2
     }
-  #}
+  }
 }
 
 time <- seq(30,180,30)

@@ -1,17 +1,29 @@
 #Please change your source file path
-source("C:/CFEM2013/RScripts/parser.R")
+source("C:/cfem2013_main/RScripts/parser.R")
 
-a <- h5read("ticks.20130424.h5", "/ticks/AMZN", bit64conversion='double')
-
+a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 
 head(quotes)
 
+trades_quotes <- filter_trades_quotes(a)
+trades_quotes_ema <- filter_trades_quotes_EMA(a, 0.05)
+  
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-
 #potential trades to exclude
-#trades <- a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
+#trades_exc <- a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
+trades_exc_ind <- which(a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)))
+
+l_trades = dim(trades)[1]
+indd = which(a$type == "T")
+ind = rep(0,2*l_trades)
+for ( i in 1:l_trades){
+  ind[(1+(i-1)*2):(2*i)] <- seq(indd[i]-1,indd[i],1)
+}
+trades_quotes <- a[ind,]
+trades_quotes <- trades_quotes[-trades_exc_ind,]
+                
 
 L <- 50
 fixed_bin <- 200 
@@ -22,7 +34,7 @@ time_bin <- 60
 
 # TR_VPIN
 OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, F)
-SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,a,bucket_size, F, L, T)
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size, F, L, T)
 
 # TR_VPIN with bulk volume
 #OI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades,bucket_size, T)
