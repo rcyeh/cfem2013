@@ -30,9 +30,10 @@ a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 options(digits.secs=6)
 a$time<-strptime(a$time,"%H:%M:%OS")
 a$time <- a$time - a$latency*0.001
-SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135, trades[-which(trades$size > 1000),], 10000, F, L, T)
-
-
+trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+s_trades <- trades[with(trades, order(time)), ]
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135, s_trades[-which(s_trades$size > 1000),], 10000, F, L, T)
+#
 
 time <- seq(30,180,30)
 bucket <- seq(1000,10000,1000)
@@ -44,25 +45,30 @@ l_bucket <- length(bucket)
 l_thres <- length(thres)
 l_decay <- length(decay)
 l_delay <- length(delay)
-R2_finer <- c()
+R2_finer2 <- c()
 
+s_a <- a[with(a, order(time)), ]
 for(j in 1:l_time){
-  for( k in 1:l_delay){
+  #for( k in 1:l_delay){
     for(i in 1:l_bucket){
       bucket_size <- bucket[i]
       time_bin <- time[j]
-      delay_1 <- delay[k]
+      #delay_1 <- delay[k]
 
       #SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,filter_trades_quotes_EMA(a,time_decay),],bucket_size, F, L, T)
-      trades_quotes <- filter_trades_quotes(delay_quotes_xms(a, delay_1))
+     # trades_quotes <- filter_trades_quotes(delay_quotes_xms(a, delay_1))
+      
+      trades_quotes <- filter_trades_quotes(s_a)
       SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin, trades_quotes, bucket_size, F, L, T)
-      l_prices = length(SOI_buckets_delta_prices[,2])
+      SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin, trades_quotes, bucket_size, F, L, T)
+     # l_prices = length(SOI_buckets_delta_prices[,2])
       SOI_buckets_delta_prices[,2][1:2] <-0
       r2 <- summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]))$r.squared
-      print(paste(bucket[i],"_",time[j],"_",delay[k], ": ",r2))
-      R2_finer[paste(bucket[i],"_",time[j],"_",delay[k])] = r2
+    #  print(paste(bucket[i],"_",time[j],"_",delay[k], ": ",r2))
+      print(paste(bucket[i],"_",time[j],"_", ": ",r2))
+      R2_finer2[paste(bucket[i],"_",time[j],"_",delay[k])] = r2
     }
-  }
+  #}
 }
 
 time <- seq(30,180,30)
