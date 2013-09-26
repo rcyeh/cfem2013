@@ -8,11 +8,15 @@ library(car)
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
-
-
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
-quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
+options(digits.secs=6)
+a$time <- strptime(a$time,"%H:%M:%OS")
+a$exchange_time <- strptime(a$exchange_time,"%H:%M:%OS")
+a_test <- h5read("ticks.20130424.h5", "/ticks/AMZN", bit64conversion='double')
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+s_trades <- trades[with(trades, order(time)), ]
+
+
 
 SPY <- read.csv("hello.csv",header=TRUE,sep=" ")
 head(SPY)
