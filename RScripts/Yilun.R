@@ -146,6 +146,123 @@ pairs(late,col=cols[km4_3$cluster]) # D,N,P
 pairs(late,col=cols[km5_3$cluster]) # D,N,P,Q
 pairs(late,col=cols[km6_3$cluster]) # D,N,P,Q,K
 
+# Analysis of trading volumes through clusters
+data1_2 = rowSums(data1_1)
+early_clus1 = data1_2[which(km2_1$cluster==1)]
+early_clus2 = data1_2[which(km2_1$cluster==2)]
+par(mfrow=c(1,2))
+boxplot(early_clus1)
+boxplot(early_clus2)
+ticker1_2 = data1[which(data1_2 == max(early_clus2)),1] # detect outlier - BAC
+early_clus2 = early_clus2[-which(early_clus2==max(early_clus2))]
+data1_2 = data1_2[-which(data1_2==max(data1_2))]
+mean(data1_2)
+mean(early_clus1)
+mean(early_clus2)
+
+data2_2 = rowSums(data2_1)
+mid_clus1 = data2_2[which(km2_2$cluster==1)]
+mid_clus2 = data2_2[which(km2_2$cluster==2)]
+par(mfrow=c(1,2))
+boxplot(mid_clus1)
+boxplot(mid_clus2)
+ticker2 = data2[which(data2_2 == max(mid_clus1)),1] # - GE
+ticker3 = data2[which(data2_2 == max(mid_clus2)),1] # - BAC
+mid_clus1 = mid_clus1[-which(mid_clus1==max(mid_clus1))]
+mid_clus2 = mid_clus2[-which(mid_clus2==max(mid_clus2))]
+data2_2 = data2_2[-c(which(data2_2 == max(mid_clus1)),which(data2_2 == max(mid_clus2)))]
+mean(data2_2)
+mean(mid_clus1)
+mean(mid_clus2)
+
+data3_2 = rowSums(data3_1)
+late_clus1 = data3_2[which(km2_3$cluster==1)]
+late_clus2 = data3_2[which(km2_3$cluster==2)]
+par(mfrow=c(1,2))
+boxplot(late_clus1)
+boxplot(late_clus2)
+ticker4 = data3[which(data3_2 == max(late_clus1)),1] # - BAC
+ticker5 = data3[which(data3_2 == max(late_clus2)),1] # - XLF
+late_clus1 = late_clus1[-which(late_clus1==max(late_clus1))]
+late_clus2 = late_clus2[-which(late_clus2==max(late_clus2))]
+data3_2 = data3_2[-c(which(data3_2 == max(late_clus1)),which(data3_2 == max(late_clus2)))]
+mean(data3_2)
+mean(late_clus1)
+mean(late_clus2)
+
+
+# Analysis of Primary Exchange through Clusters
+tickers = read.csv("Ticker-Exchange-Lookup.csv",head=T)
+
+early_ticker1 = as.character(data1[which(km2_1$cluster==1),1])
+early_ticker2 = as.character(data1[which(km2_1$cluster==2),1])
+mid_ticker1 = as.character(data2[which(km2_2$cluster==1),1])
+mid_ticker2 = as.character(data2[which(km2_2$cluster==2),1])
+late_ticker1 = as.character(data3[which(km2_3$cluster==1),1])
+late_ticker2 = as.character(data3[which(km2_3$cluster==2),1])
+
+Primary_Exchange = function(data,tickers){
+	n = length(data)
+	tick = as.character(tickers[,1])
+	C = vector()
+	for (i in 1:n){
+		C[i] = as.character(tickers[which(tick == data[i]),2])
+	}
+	return(C)
+}
+
+par(mfrow=c(3,2))
+plot(as.factor(Primary_Exchange(early_ticker2,tickers)),main="Cluster 1 of Early: More trades in D")
+plot(as.factor(Primary_Exchange(early_ticker1,tickers)),main="Cluster 2 of Early: Less trades in D")
+plot(as.factor(Primary_Exchange(mid_ticker1,tickers)),main="Cluster 1 of Midday: More trades in D")
+plot(as.factor(Primary_Exchange(mid_ticker2,tickers)),main="Cluster 2 of Midday: Less trades in D")
+plot(as.factor(Primary_Exchange(late_ticker1,tickers)),main="Cluster 1 of Late: More trades in D")
+plot(as.factor(Primary_Exchange(late_ticker2,tickers)),main="Cluster 2 of Late: Less trades in D")
+
+e_tick1 = as.character(data1[which(km6_1$cluster==1),1])
+e_tick2 = as.character(data1[which(km6_1$cluster==2),1])
+e_tick3 = as.character(data1[which(km6_1$cluster==3),1])
+e_tick4 = as.character(data1[which(km6_1$cluster==4),1])
+e_tick5 = as.character(data1[which(km6_1$cluster==5),1])
+e_tick6 = as.character(data1[which(km6_1$cluster==6),1])
+
+par(mfrow=c(3,2))
+plot(as.factor(Primary_Exchange(e_tick1,tickers)),main="Cluster 1 of Early: More trades in N",col=c(2,1))
+plot(as.factor(Primary_Exchange(e_tick2,tickers)),main="Cluster 2 of Early: More trades in P",col=c(1,1,2,1,1))
+plot(as.factor(Primary_Exchange(e_tick3,tickers)),main="Cluster 3 of Early: More trades in D",col=1)
+plot(as.factor(Primary_Exchange(e_tick4,tickers)),main="Cluster 4 of Early: More trades in Q",col=c(1,1,1,2))
+plot(as.factor(Primary_Exchange(e_tick5,tickers)),main="Cluster 5 of Early: More trades in N",col=c(1,2,1,1))
+plot(as.factor(Primary_Exchange(e_tick6,tickers)),main="Cluster 6 of Early: Other",col=1)
+
+m_tick1 = as.character(data2[which(km6_2$cluster==1),1])
+m_tick2 = as.character(data2[which(km6_2$cluster==2),1])
+m_tick3 = as.character(data2[which(km6_2$cluster==3),1])
+m_tick4 = as.character(data2[which(km6_2$cluster==4),1])
+m_tick5 = as.character(data2[which(km6_2$cluster==5),1])
+m_tick6 = as.character(data2[which(km6_2$cluster==6),1])
+
+par(mfrow=c(3,2))
+plot(as.factor(Primary_Exchange(m_tick1,tickers)),main="Cluster 1 of Midday: Other",col=1)
+plot(as.factor(Primary_Exchange(m_tick2,tickers)),main="Cluster 2 of Midday: More trades in K",col=1)
+plot(as.factor(Primary_Exchange(m_tick3,tickers)),main="Cluster 3 of Midday: More trades in P",col=c(1,1,2,1,1))
+plot(as.factor(Primary_Exchange(m_tick4,tickers)),main="Cluster 4 of Midday: More trades in D",col=1)
+plot(as.factor(Primary_Exchange(m_tick5,tickers)),main="Cluster 5 of Midday: More trades in Q",col=c(1,1,1,2,1))
+plot(as.factor(Primary_Exchange(m_tick6,tickers)),main="Cluster 6 of Midday: More trades in N",col=c(1,2,1,1,1))
+
+l_tick1 = as.character(data3[which(km6_3$cluster==1),1])
+l_tick2 = as.character(data3[which(km6_3$cluster==2),1])
+l_tick3 = as.character(data3[which(km6_3$cluster==3),1])
+l_tick4 = as.character(data3[which(km6_3$cluster==4),1])
+l_tick5 = as.character(data3[which(km6_3$cluster==5),1])
+l_tick6 = as.character(data3[which(km6_3$cluster==6),1])
+
+par(mfrow=c(3,2))
+plot(as.factor(Primary_Exchange(l_tick1,tickers)),main="Cluster 1 of Late: Other",col=1)
+plot(as.factor(Primary_Exchange(l_tick2,tickers)),main="Cluster 2 of Late: More trades in Q",col=c(1,1,1,2))
+plot(as.factor(Primary_Exchange(l_tick3,tickers)),main="Cluster 3 of Late: More trades in P",col=c(1,1,2,1))
+plot(as.factor(Primary_Exchange(l_tick4,tickers)),main="Cluster 4 of Late: Moderate trades in D",col=1)
+plot(as.factor(Primary_Exchange(l_tick5,tickers)),main="Cluster 5 of Late: Most trades in D",col=1)
+plot(as.factor(Primary_Exchange(l_tick6,tickers)),main="Cluster 6 of Late: More trades in N",col=2)
 
 ########## 4. Principal Component Analysi ##########
 # early
