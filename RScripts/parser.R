@@ -404,6 +404,25 @@ filter_trades_quotes <- function(a, volume_limit=10000){ #designed to reduce the
   return (trades_quotes)
 }
 
+filter_trades_quotes2 <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
+  indd <- which(a$type == 'T' & a$size <= volume_limit);
+  indd <- indd[! (hasq(32, a$quals[indd]) | hasq(59, a$quals[indd]))];
+  ind = unlist(as.list(rbind(indd - 1, indd)));
+  ind = ind[ind > 0];
+  trades_quotes <- a[ind,]
+  return (trades_quotes)
+}
+
+filter_trades_quotes3 <- function(a, volume_limit=10000){
+  q1 <- a$quals %% 256
+  q2 <- floor(a$quals / 256) %% 256
+  q3 <- floor(a$quals / 256 / 256) %% 256
+  q4 <- floor(a$quals / 256 / 256 / 256)
+  keep <- a$type == 'T' & a$size <= 2000 & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
+  trades_quotes <- a[keep | c(keep[2:length(keep)], FALSE),]
+  return (trades_quotes)
+}
+
 filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
   a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|bid_size|bid|ask|ask_size|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
