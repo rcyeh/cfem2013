@@ -385,6 +385,13 @@ delay_quotes_xms <- function(data_a, delay_time){
   return(data_a[with(data_a, order(time)), ])
 }
 
+delay_quotes_xms2 <- function(data_a, delay_time){
+  #options(digits.secs=6)
+  #data_a$time <- strptime(data_a$time,"%H:%M:%OS")
+  data_a$time[data_a$type == 'Q'] <- data_a$time[data_a$type == 'Q'] + delay_time
+  return(data_a[order(data_a$time), ])
+}
+
 filter_trades_quotes <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
   #a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
