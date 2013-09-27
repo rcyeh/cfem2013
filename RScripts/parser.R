@@ -1,4 +1,3 @@
-
 library(rhdf5)
 library(zoo)
 library(TTR) 
@@ -35,17 +34,17 @@ assign_buy <- function(prev_prev_price, prev_price, price,
   }
   if (use_momentum_rule && p==prev_p){
     if (prev_prev_price < p){
-      return (1)
-    }else if (prev_prev_price > p){
       return (-1)
+    }else if (prev_prev_price > p){
+      return (1)
     }else{
       return (0)
     }
   }else{
     if (p > prev_p){
-      return (1)
-    }else if (p < prev_p){
       return (-1)
+    }else if (p < prev_p){
+      return (1)
     }else{
       return (0)
     }
@@ -316,8 +315,8 @@ calc_OI_by_time_buckets <- function(interval
         i <- i+1
       }
       
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
-      #price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
+      #price_returns <- c(price_returns, log(price/prev_bucket_price))
+      price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
       
       price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
 
@@ -387,7 +386,7 @@ delay_quotes_xms <- function(data_a, delay_time){
 }
 
 filter_trades_quotes <-function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
-  #a$time <- strptime(a$time,"%H:%M:%OS")
+  a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
   trades <- trades[-which(trades$size>volume_limit)]
   #potential trades to exclude
