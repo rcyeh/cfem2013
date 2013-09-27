@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 a[["time"]] <- as.integer(as.POSIXct(strptime(a[["time"]],"%H:%M:%OS")))
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
@@ -85,6 +86,8 @@ for(j in 1:l_time){
   }
 }
 =======
+=======
+>>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 #a[["time"]] <- as.integer(as.POSIXct(strptime(a[["time"]],"%H:%M:%OS")))
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
@@ -134,4 +137,7 @@ for(j in 1:l_time){
       R2_finer[paste(time[j],"_",thres[k])] = r2
   }
 }
+<<<<<<< HEAD
+>>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3
+=======
 >>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3

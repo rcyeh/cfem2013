@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 library(rhdf5)
 library(zoo)
 library(TTR) 
@@ -453,6 +454,8 @@ filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
   return(trades_quotes[with(trades_quotes, order(time)), ])
 }
 =======
+=======
+>>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3
 library(rhdf5)
 library(zoo)
 library(TTR) 
@@ -906,4 +909,7 @@ filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
   
   return(trades_quotes[with(trades_quotes, order(time)), ])
 }
+<<<<<<< HEAD
+>>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3
+=======
 >>>>>>> 49e02bd2c6c26d798be5829df5682f0b3bd212e3
