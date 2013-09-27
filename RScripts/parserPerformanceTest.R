@@ -1,4 +1,3 @@
-
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 a[["time"]] <- as.integer(as.POSIXct(strptime(a[["time"]],"%H:%M:%OS")))
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
@@ -8,7 +7,7 @@ trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange
 L <- 50
 time <- seq(30,150,15)
 bucket <- seq(1000,15000,1000)
-thres <- seq(1000,10000,3000)
+thres <- seq(1000,10000,3000) 
 l_time <- length(time)
 l_bucket <- length(bucket)
 l_thres <- length(thres)

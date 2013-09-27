@@ -8,13 +8,47 @@ library(car)
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
+
+####### test AMZN one day training and one day test #######
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 options(digits.secs=6)
 a$time <- strptime(a$time,"%H:%M:%OS")
-a$exchange_time <- strptime(a$exchange_time,"%H:%M:%OS")
+a$time <- a$time - a$latency*0.001
+d_a <- delay_quotes_xms(a, 0.04)
+s_a <- d_a[with(d_a, order(time)), ]
+#triming large trades (over 1000)
+s_a$size[s_a$type == 'T'] <- 1000
+tq <- filter_trades_quotes(s_a,length(s_a[,1]))
+L <- 50
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(150, tq, 10000, F, L, T)
+train_data = data.frame(BR = SOI_buckets_delta_prices[,2],SOI = SOI_buckets_delta_prices[,1])
+lm1 <- lm(BR ~ SOI, data = train_data)
+plot(SOI_buckets_delta_prices[,1],SOI_buckets_delta_prices[,2])
+br_Z <-zoo(SOI_buckets_delta_prices[,2],order.by=index(SOI_buckets_delta_prices[,2]))
+#br_f_Z <- zoo(lm1$fitted.values,order.by=index(lm1$fitted.values))
+plot(br_Z,main="Training Set: AMZN actual bucket return vs fitted (red) 20130423",ylab="Bucket Return",xlab="bucket index")
+lines(index(lm1$fitted.values),lm1$fitted.values,col="red",lty=1)
+#Out-of-Sample test use day 24 
 a_test <- h5read("ticks.20130424.h5", "/ticks/AMZN", bit64conversion='double')
-trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-s_trades <- trades[with(trades, order(time)), ]
+a_test$time<-strptime(a_test$time,"%H:%M:%OS")
+a_test$time <- a_test$time - a_test$latency*0.001
+d_test_a <- delay_quotes_xms(a_test, 0.04)
+s_test_a <- trades[with(d_test_a, order(time)), ]
+#triming large trades (over 1000)
+s_test_a$size[s_test_a$type == 'T'] <- 1000
+test_tq <- filter_trades_quotes(s_test_a, length(s_test_a[,1]))
+L <- 50
+SOI_buckets_delta_prices_t <- calc_OI_by_time_buckets(150, test_tq , 10000, F, L, T)
+test_data <- data.frame(BR = SOI_buckets_delta_prices_t[,2],SOI = SOI_buckets_delta_prices_t[,1])
+test_predict <- predict.lm(lm1,newdata=test_data,interval="none")
+plot(index(test_data$BR),test_data$BR,type="l",
+     main="Out-of-Sample test: AMZN actual bucket return vs fitted (red) 20130424",ylab="Bucket Return",xlab="bucket index")
+lines(index(test_data$BR),test_predict,col="red",lty=1)
+directionmatchR <- 1-sum(sign(test_predict)-sign(test_data$BR))/length(test_predict)
+###########test end
+
+a <- h5read("ticks.20130423.h5", "/ticks/BAC", bit64conversion='double')
+thres <- mean(s_trades$size)+2*sd(s_trades$size)
 
 
 
@@ -41,7 +75,7 @@ SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135, s_trades[-which(s_trade
 
 time <- seq(30,180,30)
 bucket <- seq(1000,10000,1000)
-thres <- 20000
+thres <- 2000
 decay <- seq()
 delay <- seq(0,0.1,0.005)
 l_time <- length(time)

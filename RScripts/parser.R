@@ -1,4 +1,3 @@
-
 library(rhdf5)
 library(zoo)
 library(TTR) 
@@ -316,8 +315,8 @@ calc_OI_by_time_buckets <- function(interval
         i <- i+1
       }
       
-      price_returns <- c(price_returns, log(price/prev_bucket_price))
-      #price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
+      #price_returns <- c(price_returns, log(price/prev_bucket_price))
+      price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
       
       price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
 
@@ -380,13 +379,13 @@ plot_one_factor_model <-function(xs, ys,xlabb="x",ylabb="y",mmain =""){
 }
 
 delay_quotes_xms <- function(data_a, delay_time){
-  options(digits.secs=6)
-  data_a$time <- strptime(data_a$time,"%H:%M:%OS")
+  #options(digits.secs=6)
+  #data_a$time <- strptime(data_a$time,"%H:%M:%OS")
   data_a[data_a$type == 'Q',]$time <- data_a[data_a$type == 'Q',]$time + delay_time
   return(data_a[with(data_a, order(time)), ])
 }
 
-filter_trades_quotes <-function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
+filter_trades_quotes <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
   #a$time <- strptime(a$time,"%H:%M:%OS")
   trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
   trades <- trades[-which(trades$size>volume_limit)]
