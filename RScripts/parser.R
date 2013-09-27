@@ -379,8 +379,8 @@ plot_one_factor_model <-function(xs, ys,xlabb="x",ylabb="y",mmain =""){
 }
 
 delay_quotes_xms <- function(data_a, delay_time){
-  #options(digits.secs=6)
-  #data_a$time <- strptime(data_a$time,"%H:%M:%OS")
+  options(digits.secs=6)
+  data_a$time <- strptime(data_a$time,"%H:%M:%OS")
   data_a[data_a$type == 'Q',]$time <- data_a[data_a$type == 'Q',]$time + delay_time
   return(data_a[with(data_a, order(time)), ])
 }
