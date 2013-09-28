@@ -26,7 +26,7 @@ l_bucket <- length(bucket)
 l_thres <- length(thres)
 R2s <- c()
 R2s_pred <- c()
-tickers <- c('BA','TIF','AGN','CAT')
+tickers <- c('AMZN', 'BA','TIF','AGN','CAT')
 l_tickers <-length(tickers)
 
 for (m in 1:l_tickers){

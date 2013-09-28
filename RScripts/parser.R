@@ -256,8 +256,10 @@ calc_OI_by_time_buckets <- function(interval
       prev_prev_ask <- prev_ask
       prev_bid <- bid
       prev_ask <- ask
-      bid <- trades$bid[i+qc]
-      ask <- trades$ask[i+qc]
+      #bid <- trades$bid[i+qc]
+      bid <- trades$ema_mid[i+qc]
+      #ask <- trades$ask[i+qc]
+      ask <- trades$ema_mid[i+qc]
       qc <- qc+1
       next
     }
