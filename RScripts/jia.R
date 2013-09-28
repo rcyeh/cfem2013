@@ -8,10 +8,17 @@ library(car)
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
-a <- h5read("ticks.20130423.h5", "/ticks/BA", bit64conversion='double')
+a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+a <- a[with(a, order(exchange_time)), ]
 #a[["time"]] <- as.integer(as.POSIXct(strptime(a[["time"]],"%H:%M:%OS")))
 quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+mid_quotes <- apply(data.frame(bid = quotes$bid, ask = quotes$ask),1,mean)
+EMA_q <- cal_quotes_EMA(mid_quotes,quotes$exchange_time/100000,1)
+
+plot(index(mid_quotes),mid_quotes,type="l")
+lines(index(EMA_q),EMA_q,col="red")
+
 
 L <- 50
 time <- seq(30,120,30)

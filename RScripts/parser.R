@@ -6,6 +6,17 @@ qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 2
 
 hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 
+cal_quotes_EMA <- function(a,alpha=1){
+  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
+  weights <- cumprod(exp(alpha*delta_t))
+  mid_quotes <- apply(data.frame(a$bid[a$type == "Q"],a$ask[a$type == "Q"]),1,mean)
+  quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
+  #plot(index(mid_quotes),mid_quotes,type="l")
+  #lines(index(EMA_q),EMA_q,col="red")
+  return(quotes_ema)
+  
+}
+
 assign_buy_bid_ask <- function(bid, ask, price){
   bid_diff <- price - bid
   ask_diff <- price - ask
