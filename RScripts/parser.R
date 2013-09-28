@@ -6,20 +6,6 @@ qsplit <- function(d) { return (c( floor(d / 256 / 256 / 256), floor(d / 256 / 2
 
 hasq <- function(qual, v) { unlist(lapply(v, function(x) { qual %in% qsplit(x) })) }
 
-cal_quotes_EMA <- function(a,alpha=1){
-  a <- a[order(a$exchange_time),]
-  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
-  weights <- cumprod(exp(alpha*delta_t))
-  mid_quotes <- apply(data.frame(a$bid[a$type == "Q"],a$ask[a$type == "Q"]),1,mean)
-  quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
-  #a <- data.frame(a,act = 0)
-  a$ema_mid[a$type == "Q"] <- quotes_ema
-  a <- filter_trades_quotes3(a)
-  plot(index(mid_quotes),mid_quotes,type="l")
-  lines(index(quotes_ema),quotes_ema,col="red")
-  return(a)
-}
-
 assign_buy_bid_ask <- function(bid, ask, price){
   bid_diff <- price - bid
   ask_diff <- price - ask
@@ -33,7 +19,6 @@ assign_buy_bid_ask <- function(bid, ask, price){
     return (0)
   }
 }
-
 
 assign_buy <- function(prev_prev_price, prev_price, price, 
                        use_sub_penny_rule, use_momentum_rule){
@@ -231,7 +216,7 @@ calc_OI_by_time_buckets <- function(interval
                                     , use_sub_penny_rule = T
                                     , use_trades = T
 ) {
-  m_interval <- interval / 60.0
+  m_interval <- interval * 1000 #use miliseconds
   options(digits.secs=9)
   start_t <- 0
   prev_price <- 0
@@ -263,7 +248,6 @@ calc_OI_by_time_buckets <- function(interval
   qc <- 0; trlen <- length(trades[,1])
   
   while (i+qc <= trlen){
-    #print(paste("I&Q: ", i, qc))
     type <- trades$type[i+qc]
     
     if (type == 'Q'){ # This is a Quote
@@ -279,16 +263,13 @@ calc_OI_by_time_buckets <- function(interval
     }
     else{ # This is a trade
       if (!use_trades){if (prev_symbol != 'X'){ use_quotes <- T }}
-      #print("Parsing Trades")
     }
     j <- j+1
     
-    tm <- trades$time[i+qc] #just remember to format time before hand
+    tm <- trades$exchange_time[i+qc] #just remember to format time before hand
     volume <- trades$size[i+qc]
     price <- trades$price[i+qc]
     
-    #print(paste("SIZE: ", volume))
-    #print(paste("Cum Vol: ", volume_count))
     if (first_record){ #first record
       start_t <- tm
       prev_price <- price
@@ -310,12 +291,9 @@ calc_OI_by_time_buckets <- function(interval
       b <- 1.0
       if (use_gaussian){ sigma <- var(gaussian_sigma_vector) } 
       if(!is.na(sigma) && !(sigma==0)){
-        #print(gaussian_sigma_vector)
-        #print("gaussian b")
         b <- 2*pnorm((price-prev_price)/sigma)  - 1 
       }
       else{
-        #print(paste("DEBUG: ", prev_bid, prev_ask, price))
         if (use_quotes){
           b <- assign_buy_bid_ask(bid, ask, price)
         }else{
@@ -365,9 +343,7 @@ calc_OI_by_time_buckets <- function(interval
       }
       OI <- OI + b*bucket_volume
       
-      #print(paste("Plus total-bin: ", OI, ", vol: ", bucket_volume))
       bucket_volume <- 0.0 #reset
-      #volume_count <- volume_count + volume
       start_t <- tm
       prev_prev_price <- prev_price
       prev_price <- price
@@ -392,37 +368,26 @@ plot_one_factor_model <-function(xs, ys,xlabb="x",ylabb="y",mmain =""){
   return(one_factor_model)
 }
 
-delay_quotes_xms <- function(data_a, delay_time){
-  options(digits.secs=6)
-  data_a$time <- strptime(data_a$time,"%H:%M:%OS")
-  data_a[data_a$type == 'Q',]$time <- data_a[data_a$type == 'Q',]$time + delay_time
-  return(data_a[with(data_a, order(time)), ])
-}
-
-delay_quotes_xms2 <- function(data_a, delay_time){
+delay_quotes_xms <- function(data_a, delay_time){ #delay time in miliseconds
   #options(digits.secs=6)
   #data_a$time <- strptime(data_a$time,"%H:%M:%OS")
-  data_a$time[data_a$type == 'Q'] <- data_a$time[data_a$type == 'Q'] + delay_time
-  return(data_a[order(data_a$time), ])
+  data_a$exchange_time[data_a$type == 'Q'] <- data_a$exchange_time[data_a$type == 'Q'] + delay_time*1000
+  return(data_a[order(data_a$exchange_time), ])
 }
 
-filter_trades_quotes <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
-  #a$time <- strptime(a$time,"%H:%M:%OS")
-  trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-  trades <- trades[-which(trades$size>volume_limit)]
-  #potential trades to exclude
-  #trades_exc <- a[a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)),unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line", "\\|"))]
-  trades_exc_ind <- which(a$type == 'T' & (hasq(32,a$quals) | hasq(59,a$quals)))
-  
-  l_trades = dim(trades)[1]
-  indd = which(a$type == "T")
-  ind = rep(0,2*l_trades)
-  for ( i in 1:l_trades){
-    ind[(1+(i-1)*2):(2*i)] <- seq(indd[i]-1,indd[i],1)
-  }
-  trades_quotes <- a[ind,]
-  trades_quotes <- trades_quotes[-trades_exc_ind,]
-  return (trades_quotes)
+cal_quotes_EMA <- function(a,alpha=1,vol_lim=10000){
+  a <- a[order(a$exchange_time),]
+  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
+  weights <- cumprod(exp(alpha*delta_t))
+  mid_quotes <- apply(data.frame(a$bid[a$type == "Q"],a$ask[a$type == "Q"]),1,mean)
+  quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
+  a$ema_mid[a$type == "Q"] <- quotes_ema
+  a <- filter_trades_quotes3(a, vol_lim)
+
+    #plot(index(mid_quotes),mid_quotes,type="l")
+    #lines(index(quotes_ema),quotes_ema,col="red")
+
+  return(a)
 }
 
 filter_trades_quotes2 <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
@@ -439,56 +404,18 @@ filter_trades_quotes3 <- function(a, volume_limit=10000){
   q2 <- floor(a$quals / 256) %% 256
   q3 <- floor(a$quals / 256 / 256) %% 256
   q4 <- floor(a$quals / 256 / 256 / 256)
-  keep <- a$type == 'T' & a$size <= 2000 & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
+  keep <- a$type == 'T' & a$size <= volume_limit & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
   trades_quotes <- a[keep | c(keep[2:length(keep)], FALSE),]
   return (trades_quotes)
 }
 
-filter_trades_quotes_EMA <- function(a, time_decay, volume_limit=10000){
-  a$time <- strptime(a$time,"%H:%M:%OS")
-  trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|bid_size|bid|ask|ask_size|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-  quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|bid_size|bid|ask|ask_size|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-  
-  trades <- trades[-which(trades$size>volume_limit)]
-  l_trades = dim(trades)[1]
-  ##############3
-  #for(j in 1:l_trades){
-  #time_stamp <- trades$time[j]
-  #if( j == 1){
-    
-  #  start <- min(which(quotes$time>time_stamp-time_decay))
-    
-  #}
-  #start <- 
-  
-  #}
-  ema_quotes_bid <- vector()
-  ema_quotes_ask <- vector()
-  time_vec <- vector()
-  indd = which(a$type == "T")
-  
-  j <- 0
-  for ( i in indd ){
-    back <- max(1,i-1000)
-    a_m <- a[a$type == "Q",]
-    a_mod <- a_m[back:i,]
-
-    j <- j+1
-    time_stamp <- a$time[i]
-    print(j)
-    within_range_quotes <- a_mod[which(a_mod$time > time_stamp - time_decay),]
-    n <- dim(within_range_quotes)[1]
-    #print(n)
-    ema_quotes_bid[j] <- EMA(within_range_quotes$bid, n)[n]
-    ema_quotes_ask[j] <- EMA(within_range_quotes$ask, n)[n]
-    time_vec[j] <- time_stamp + time_decay/2
-  }
-
-  quotes[1:length(l_trades)]$bid <- ema_quotes_bid
-  quotes[1:length(l_trades)]$ask <- ema_quotes_ask
-  quotes[1:length(l_trades)]$time <- time_vec
-  trades_quotes <- rbind(trades, quotes[1:length(l_trades)])
-  
-  return(trades_quotes[with(trades_quotes, order(time)), ])
+compute_quotes_ema <- function(quotes, decay){
+  l_entry <- length(quotes$bid)
+  const_weight <- 1/l_entry
+  a <- exp(-diff(quotes$exchange_time)/decay)
+  EMA(quotes$bid,a)
+  running_sum <- cumsum(a*(quotes$bid[-1] + quotes$ask[-1])/2)
+  running_weights <- const_weight + cumsum(a*const_weight*l_entry)
+  mid_price <- (running_sum/running_weights)
+  return (cbind(quotes[1:(l_entry-1),], mid_price))
 }
-
