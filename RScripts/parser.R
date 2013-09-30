@@ -392,6 +392,16 @@ cal_quotes_EMA <- function(a,alpha=1,vol_lim=10000){
   return(a)
 }
 
+cal_quotes_EMA2 <- function(a,alpha=1){
+  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
+  weights <- cumprod(exp(alpha*delta_t))
+  mid_quotes <- 0.5 * (a$bid[a$type == "Q"]+a$ask[a$type == "Q"]);
+  quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
+  #plot(index(mid_quotes),mid_quotes,type="l")
+  #lines(index(EMA_q),EMA_q,col="red")
+  return(quotes_ema)
+}
+
 filter_trades_quotes2 <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
   indd <- which(a$type == 'T' & a$size <= volume_limit);
   indd <- indd[! (hasq(32, a$quals[indd]) | hasq(59, a$quals[indd]))];
