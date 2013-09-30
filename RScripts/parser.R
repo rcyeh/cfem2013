@@ -357,7 +357,7 @@ calc_OI_by_time_buckets <- function(interval
 	  OI_buckets = abs(OI_buckets);
   }
   
-  OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
+  OI_vs_delta_prices <- data.frame(OI_buckets, price_returns, price_volatilities)
   return (OI_vs_delta_prices)
 }
 

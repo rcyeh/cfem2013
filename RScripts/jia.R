@@ -7,9 +7,10 @@ library(car)
 
 ####TEST EMA SPEED
 Rprof(memory.profiling=TRUE, line.profiling=TRUE)
-newnew <- cal_quotes_EMA(a)  
+newnew <- cal_quotes_EMA(a,0.5)  
 Rprof(NULL)
 summaryRprof(lines="both")
+#############
 
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
@@ -19,6 +20,10 @@ a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 #quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
 #trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
 
+a <- h5read("ticks.20130423.h5","/ticks/AGN",bit64conversion='double')
+trades_quotes <- cal_quotes_EMA(delay_quotes_xms(a,0.025),1.5,2000)
+SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135,trades_quotes,10000, F, L, T)     
+summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]))
 
 L <- 50
 time <- seq(30,120,30)
