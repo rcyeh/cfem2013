@@ -46,7 +46,7 @@ for (m in 1:l_tickers){
             q_delay <- delays[l]
             decay <- ema_decay_rate[m]
             key <- paste(tick,"_",bucket_size,"_",time_bin,"_",thres_h,"_",q_delay,"_",decay,sep="")
-            trades_quotes <- cal_quotes_EMA(delay_quotes_xms(a,q_delay),decay,thres_h)
+            trades_quotes <- filter_emaquotes_trades(delay_quotes_xms(a,q_delay),decay,thres_h)
             
             SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size, F, L, T)     
             l_prices = length(SOI_buckets_delta_prices[,2])
