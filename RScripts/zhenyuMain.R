@@ -26,13 +26,21 @@ l_bucket <- length(bucket)
 l_thres <- length(thres)
 R2s <- c()
 R2s_pred <- c()
+<<<<<<< HEAD
 #
 tickers <- c('AMZN','BA','TIF','AGN','CAT')
+=======
+tickers <- c('AMZN', 'BA','TIF','AGN','CAT')
+>>>>>>> 9f1c120af26408e3452d4d3872cd37f3a09bd460
 l_tickers <-length(tickers)
 
 for (m in 1:l_tickers){
   tick <- tickers[m]
+<<<<<<< HEAD
   a <- h5read("ticks.20130429.h5", paste("/ticks/",tick,sep=""), bit64conversion='double')
+=======
+  a <- h5read("ticks.20130423.h5", paste("/ticks/",tick,sep=""), bit64conversion='double')
+>>>>>>> 9f1c120af26408e3452d4d3872cd37f3a09bd460
   
   for(j in 1:l_time){
     for( k in 1:l_thres){
@@ -49,8 +57,13 @@ for (m in 1:l_tickers){
             
             SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size, F, L, T)     
             l_prices = length(SOI_buckets_delta_prices[,2])
+<<<<<<< HEAD
             r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-1,1]*SOI_buckets_delta_prices[-1,3]))$adj.r.squared
             r2p <- summary(lm(SOI_buckets_delta_prices[-c(1,2),2]~SOI_buckets_delta_prices[-c(1,l_prices),1]*SOI_buckets_delta_prices[-c(1,l_prices),3]))$adj.r.squared
+=======
+            r2 <- summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]))$adj.r.squared
+            r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3]))$adj.r.squared
+>>>>>>> 9f1c120af26408e3452d4d3872cd37f3a09bd460
             print(paste(key, ": ",r2,",",r2p))
             R2s_pred[key] = r2p
             R2s[key] = r2
