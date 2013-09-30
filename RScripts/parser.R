@@ -357,11 +357,8 @@ calc_OI_by_time_buckets <- function(interval
 	  OI_buckets = abs(OI_buckets);
   }
   
-<<<<<<< HEAD
   OI_vs_delta_prices <- data.frame(OI_buckets, price_returns, price_volatilities)
-=======
-  OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
->>>>>>> 9f1c120af26408e3452d4d3872cd37f3a09bd460
+
   return (OI_vs_delta_prices)
 }
 
@@ -381,23 +378,16 @@ delay_quotes_xms <- function(data_a, delay_time){ #delay time in miliseconds
   return(data_a[order(data_a$exchange_time), ])
 }
 
-cal_quotes_EMA <- function(a,alpha=1,vol_lim=10000){
+filter_emaquotes_trades <- function(a,alpha=1,vol_lim=10000){
   a <- a[order(a$exchange_time),]
-  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
-  weights <- cumprod(exp(alpha*delta_t))
-  mid_quotes <- apply(data.frame(a$bid[a$type == "Q"],a$ask[a$type == "Q"]),1,mean)
-  quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
-  a$ema_mid[a$type == "Q"] <- quotes_ema
+  a$ema_mid[a$type == "Q"] <- cal_quotes_EMA2(a,alpha)
   a <- filter_trades_quotes3(a, vol_lim)
-
-    #plot(index(mid_quotes),mid_quotes,type="l")
-    #lines(index(quotes_ema),quotes_ema,col="red")
-
+  #plot(index(mid_quotes),mid_quotes,type="l")
+  #lines(index(quotes_ema),quotes_ema,col="red")
   return(a)
 }
 
-<<<<<<< HEAD
-=======
+
 cal_quotes_EMA2 <- function(a,alpha=1){
   delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
   weights <- cumprod(exp(alpha*delta_t))
@@ -408,7 +398,7 @@ cal_quotes_EMA2 <- function(a,alpha=1){
   return(quotes_ema)
 }
 
->>>>>>> 9f1c120af26408e3452d4d3872cd37f3a09bd460
+
 filter_trades_quotes2 <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
   indd <- which(a$type == 'T' & a$size <= volume_limit);
   indd <- indd[! (hasq(32, a$quals[indd]) | hasq(59, a$quals[indd]))];
