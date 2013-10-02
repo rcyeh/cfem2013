@@ -264,7 +264,212 @@ plot(as.factor(Primary_Exchange(l_tick4,tickers)),main="Cluster 4 of Late: Moder
 plot(as.factor(Primary_Exchange(l_tick5,tickers)),main="Cluster 5 of Late: Most trades in D",col=1)
 plot(as.factor(Primary_Exchange(l_tick6,tickers)),main="Cluster 6 of Late: More trades in N",col=2)
 
-########## 4. Principal Component Analysi ##########
+########## 4. Binary and Three ##########
+
+data1 = read.csv2("early_clus.csv",head=T)
+data1_1 = as.matrix(data1[,-1])
+early = data1_1/rowSums(data1_1)
+
+data2 = read.csv("mid_clus.csv",head=T)
+data2_1 = as.matrix(data2[,-1])
+mid = data2_1/rowSums(data2_1)
+
+data3 = read.csv2("late_clus.csv",head=T)
+data3_1 = as.matrix(data3[,-1])
+late = data3_1/rowSums(data3_1)
+
+tickers = read.csv("Ticker-Exchange-Lookup.csv",head=T)
+
+Primary_Exchange = function(data,tickers){
+	n = length(data)
+	tick = as.character(tickers[,1])
+	C = vector()
+	for (i in 1:n){
+		C[i] = as.character(tickers[which(tick == data[i]),2])
+	}
+	return(C)
+}
+
+# 0 & 1
+Binary = function(a){		# change value to 0 & 1
+	threshold = 0.05		# adjust threshold here
+	if (a >= threshold){
+		b = 1
+	} else {
+		b = 0
+	}
+	return (b)
+}
+
+Cat1 = function(a){			# Cat1 to Cat3 is to create a new factor variable
+	n = dim(a)[1]
+	m = dim(a)[2]
+	b = matrix(nrow=n, ncol=m)
+	for (i in 1:n){
+		for (j in 1:m){
+			if (a[i,j] == 1){
+				b[i,j] = colnames(a)[j]
+			} else {b[i,j]=""}
+		}
+	}
+	return(b)
+}
+
+Cat2 = function(matrix){
+	n = dim(matrix)[1]
+	name = vector(length = n)
+	for (i in 1:n){
+		name[i] = gsub(" ","",paste(matrix[i,1],matrix[i,2],matrix[i,3],matrix[i,4],matrix[i,5],matrix[i,6],matrix[i,7],matrix[i,8],matrix[i,9],matrix[i,10],matrix[i,11],matrix[i,12],matrix[i,13],matrix[i,14]),fixed = T)
+	}
+	return(name)
+}
+
+Cat3 = function(matrix){
+	matrix_bi = matrix(sapply(matrix,Binary),nrow=dim(matrix)[1],byrow=F)
+	colnames(matrix_bi) = colnames(matrix)
+	matrix_cat1 = Cat2(Cat1(matrix_bi))
+	matrix_cat2 = sort(table(matrix_cat1),T)
+	return(list(matrix_cat1,matrix_cat2))
+}
+
+MEAN = function(time,pe,cat){
+	mean(get(paste(time,"_volume",sep=""))[which(get(paste(time,"_new",sep=""))[,3] == pe & get(paste(time,"_new",sep=""))[,4] == cat)])
+}
+
+TP_Cluster = function(time,pe,n){
+	a = sort(table(get(paste(time,"_new",sep=""))[which(get(paste(time,"_new",sep=""))[,3] == pe),4]),T)
+	b = matrix(nrow = n,ncol=5)
+	colnames(b) = c("Index","Exchange","# of stock","Percentage","Mean_Trading_Volume")
+	b[,2] = names(a)[1:n]
+	for (i in 1:n){
+		b[i,1] = i
+		b[i,3] = a[i]
+		b[i,4] = a[i]/sum(a)
+		b[i,5] = as.numeric(MEAN(time,pe,names(a)[i]))
+	}
+	c = sum(as.numeric(b[,4]))
+	d = plot(as.numeric(b[,5]),type = "h",lwd = 10,xaxt = "n",ylab = "Average Trading Volume", xlab = "Most Popular Trading Pattern", main = as.character(paste(time, " with ",pe," as the primary exchange",sep="")), axis=F)
+	axis(1,at = c(1:10), labels = names(a)[1:10], cex.axis=0.5)
+	return(list(b,c))
+}
+
+early_ticker = as.character(data1[,1])
+early_volume = rowSums(data1_1)
+early_exchange = Primary_Exchange(as.character(data1[,1]),tickers)
+early_cat = Cat3(early)[[1]]
+early_new = cbind(early_ticker,early_volume,early_exchange,early_cat)
+colnames(early_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+mid_ticker = as.character(data2[,1])
+mid_volume = rowSums(data2_1)
+mid_exchange = Primary_Exchange(as.character(data2[,1]),tickers)
+mid_cat = Cat3(mid)[[1]]
+mid_new = cbind(mid_ticker,mid_volume,mid_exchange,mid_cat)
+colnames(mid_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+late_ticker = as.character(data3[,1])
+late_volume = rowSums(data3_1)
+late_exchange = Primary_Exchange(as.character(data3[,1]),tickers)
+late_cat = Cat3(late)[[1]]
+late_new = cbind(late_ticker,late_volume,late_exchange,late_cat)
+colnames(late_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+TP_Cluster("early","A",10)
+TP_Cluster("early","N",10)
+TP_Cluster("early","P",10)
+TP_Cluster("early","Q",10)
+TP_Cluster("mid","A",10)
+TP_Cluster("mid","N",10)
+TP_Cluster("mid","P",10)
+TP_Cluster("mid","Q",10)
+TP_Cluster("late","A",10)
+TP_Cluster("late","N",10)
+TP_Cluster("late","P",10)
+TP_Cluster("late","Q",10)
+
+# 0 vs 1 vs 2
+Three = function(a){
+	threshold1 = 0.05		# adjust threshold here
+	threshold2 = 0.5        # adjust threshold here
+	if (a < threshold1){
+		b = 0
+	} else {
+		if (a >= threshold2){
+			b = 2
+		} else {
+			b = 1
+		}
+	}
+	return (b)
+}
+
+Cat4 = function(a){			# Cat4 and Cat5 is to create a new factor variable
+	n = dim(a)[1]
+	m = dim(a)[2]
+	b = matrix(nrow=n, ncol=m)
+	for (i in 1:n){
+		for (j in 1:m){
+			if (a[i,j] == 1){
+				b[i,j] = colnames(a)[j]
+			} else {
+				if (a[i,j] == 2){
+					b[i,j] = paste(colnames(a)[j],colnames(a)[j],sep="")
+				} else{
+					b[i,j] = ""
+				}
+			}
+		}
+	}
+	return(b)
+}
+
+Cat5 = function(matrix){
+	n = dim(matrix)[1]
+	name = vector(length = n)
+	for (i in 1:n){
+		name[i] = gsub(" ","",paste(matrix[i,1],matrix[i,2],matrix[i,3],matrix[i,4],matrix[i,5],matrix[i,6],matrix[i,7],matrix[i,8],matrix[i,9],matrix[i,10],matrix[i,11],matrix[i,12],matrix[i,13],matrix[i,14]),fixed = T)
+	}
+	return(name)
+}
+
+Cat6 = function(matrix){
+	matrix_bi = matrix(sapply(matrix,Three),nrow=dim(matrix)[1],byrow=F)
+	colnames(matrix_bi) = colnames(matrix)
+	matrix_cat1 = Cat5(Cat4(matrix_bi))
+	matrix_cat2 = sort(table(matrix_cat1),T)
+	return(list(matrix_cat1,matrix_cat2))
+}
+
+early1_volume = rowSums(data1_1)
+early1_cat = Cat6(early)[[1]]
+early1_new = cbind(early_ticker,early1_volume,early_exchange,early1_cat)
+colnames(early1_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+mid1_volume = rowSums(data2_1)
+mid1_cat = Cat6(mid)[[1]]
+mid1_new = cbind(mid_ticker,mid1_volume,mid_exchange,mid1_cat)
+colnames(mid1_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+late1_volume = rowSums(data3_1)
+late1_cat = Cat6(late)[[1]]
+late1_new = cbind(late_ticker,late1_volume,late_exchange,late1_cat)
+colnames(late1_new) = c("tikcer","volume","primary_exchange","trading_exchange")
+
+TP_Cluster("early1","A",10)
+TP_Cluster("early1","N",10)
+TP_Cluster("early1","P",10)
+TP_Cluster("early1","Q",10)
+TP_Cluster("mid1","A",10)
+TP_Cluster("mid1","N",10)
+TP_Cluster("mid1","P",10)
+TP_Cluster("mid1","Q",10)
+TP_Cluster("late1","A",10)
+TP_Cluster("late1","N",10)
+TP_Cluster("late1","P",10)
+TP_Cluster("late1","Q",10)
+
+
+########## 5. Principal Component Analysi ##########
 # early
 pc.1 = prcomp(early,scale.=T)
 summary(pc.1)
