@@ -36,11 +36,11 @@ setwd("C:/cfem/trunk/RScripts")
   
   #For each aggregate, perform analytics
   #Change the A_Listed here to *_Listed to analyze on other data
-  l = c(1:length(P_Listed))    #Change this line to change to your listing
+  l = c(1:length(A_Listed))    #Change this line to change to your listing
   
   collect <- data.frame()
   for(ticker in l) {
-    symbol = P_Listed[ticker]   #And change this line to change to your listing
+    symbol = A_Listed[ticker]   #And change this line to change to your listing
     print(ticker)
     print(symbol)
     a <- h5read("ticks.20130424.h5", paste("/ticks/",symbol,sep='') , bit64conversion='double')
@@ -61,20 +61,21 @@ setwd("C:/cfem/trunk/RScripts")
       trades$timegrp[mid_day_start <= trades$time & trades$time < mid_day_end] = 'Midday'
       trades$timegrp[mid_day_end <= trades$time & trades$time < ed] = 'Late'
       trades$cout = 1  #For debuggin only, feel free to ignore this
-      trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, symbol, size, exchange, timegrp, cout))
+      trades$price=round(trades$price,digits=4)
+      trades <- subset(trades, quals==0 | quals==6 | quals==23 | quals==33 | quals==58 | quals==59, select=c(time, symbol, size, exchange, timegrp, cout,price))
       if(dim(trades)[1]!=0)
       {
-        df<-aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp, symbol=trades$symbol),sum)
+        df<-aggregate(trades$size, by=list(exchange=trades$exchange, timegrp=trades$timegrp, symbol=trades$symbol, price=trades$price),sum)
         collect<-rbind(df,collect)
-        collect<-aggregate(collect$x, by=list(exchange=collect$exchange, timegrp=collect$timegrp, symbol=collect$symbol),sum)
+        collect<-aggregate(collect$x, by=list(exchange=collect$exchange, timegrp=collect$timegrp, symbol=collect$symbol,price=collect$price),sum)
       }
       
     }
   }
-  fi <- aggregate(collect$x, by=list(exchange=collect$exchange, timegrp=collect$timegrp, symbol=collect$symbol),sum)
-  one<-subset(fi,timegrp=="Early",select=c("exchange","symbol","x"))
-  two<-subset(fi,timegrp=="Midday",select=c("exchange","symbol","x"))
-  three<-subset(fi,timegrp=="Late",select=c("exchange","symbol","x"))
-  write.table(one, "early1.csv", sep = "\t")
-  write.table(two, "midday1.csv", sep = "\t")
-  write.table(three, "late1.csv", sep = "\t")
+  fi <- aggregate(collect$x, by=list(exchange=collect$exchange, timegrp=collect$timegrp, symbol=collect$symbol,price=collect$price),sum)
+  one<-subset(fi,timegrp=="Early",select=c("exchange","price","symbol","x"))
+  two<-subset(fi,timegrp=="Midday",select=c("exchange","price","symbol","x"))
+  three<-subset(fi,timegrp=="Late",select=c("exchange","price","symbol","x"))
+  write.table(one, "early.csv", sep = "\t")
+  write.table(two, "midday.csv", sep = "\t")
+  write.table(three, "late.csv", sep = "\t")
