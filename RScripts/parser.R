@@ -243,6 +243,7 @@ calc_OI_by_time_buckets <- function(interval
   prev_ask <- 0.0
   bid <- 0.0
   ask <- 0.0
+  mid <- 0.0
   
   use_quotes <- F
   qc <- 0; trlen <- length(trades[,1])
@@ -252,6 +253,7 @@ calc_OI_by_time_buckets <- function(interval
     
     if (type == 'Q'){ # This is a Quote
       prev_symbol <- 'Q'
+      mid <- (trades$bid[i+qc] + trades$ask[i+qc])/2
       prev_prev_bid <- prev_bid
       prev_prev_ask <- prev_ask
       prev_bid <- bid
@@ -260,6 +262,7 @@ calc_OI_by_time_buckets <- function(interval
       bid <- trades$ema_mid[i+qc]
       #ask <- trades$ask[i+qc]
       ask <- trades$ema_mid[i+qc]
+      
       qc <- qc+1
       next
     }
@@ -310,7 +313,8 @@ calc_OI_by_time_buckets <- function(interval
       }
       
       #price_returns <- c(price_returns, log(price/prev_bucket_price))
-      price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
+      #price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
+      price_returns <- c(price_returns, log(mid/((prev_bid+prev_ask)/2)))
       
       price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
 

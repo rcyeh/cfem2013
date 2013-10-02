@@ -129,7 +129,7 @@ EXCHANGE CODES
 	E	Market Independent --- doesn't appear in practice
 	I	International Securities Exchange --- options
 	J	EDGA Exchange, Inc
-	K	EDGX Exchange, Inc
+	K		
 	M	Chicago Stock Exchange
 	N	NYSE Euronext (New York)
 	P	NYSE Arca Exchange (originally Pacific)
