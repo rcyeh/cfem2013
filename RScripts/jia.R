@@ -56,11 +56,11 @@ a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
 options(digits.secs=6)
 a$time <- strptime(a$time,"%H:%M:%OS")
 a$time <- a$time - a$latency*0.001
-d_a <- delay_quotes_xms(a, 0.04)
-s_a <- d_a[with(d_a, order(time)), ]
+d_a <- delay_quotes_xms(a, 40)
+s_a <- d_a[order(d_a$time), ]
 #triming large trades (over 1000)
-s_a$size[s_a$type == 'T'] <- 1000
-tq <- filter_trades_quotes(s_a,length(s_a[,1]))
+#s_a$size[s_a$type == 'T'] <- 1000
+tq <- filter_trades_quotes3(s_a,length(s_a[,1]))
 L <- 50
 SOI_buckets_delta_prices <- calc_OI_by_time_buckets(150, tq, 10000, F, L, T)
 train_data = data.frame(BR = SOI_buckets_delta_prices[,2],SOI = SOI_buckets_delta_prices[,1])
@@ -71,7 +71,7 @@ br_Z <-zoo(SOI_buckets_delta_prices[,2],order.by=index(SOI_buckets_delta_prices[
 plot(br_Z,main="Training Set: AMZN actual bucket return vs fitted (red) 20130423",ylab="Bucket Return",xlab="bucket index")
 lines(index(lm1$fitted.values),lm1$fitted.values,col="red",lty=1)
 #Out-of-Sample test use day 24 
-a_test <- h5read("ticks.20130424.h5", "/ticks/AMZN", bit64conversion='double')
+a_test <- h5read("ticks.20130429.h5", "/ticks/AMZN", bit64conversion='double')
 a_test$time<-strptime(a_test$time,"%H:%M:%OS")
 a_test$time <- a_test$time - a_test$latency*0.001
 d_test_a <- delay_quotes_xms(a_test, 0.04)
