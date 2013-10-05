@@ -69,6 +69,8 @@ p1 = (1-pnorm(abs(z1),0,1))/2  # 2-tailed z test
 
 ########## 3. Clustering ##########
 # Processing Data #
+library("scales")
+
 data1 = read.csv2("early_clus.csv",head=T)
 data1_1 = as.matrix(data1[,-1])
 early = data1_1/rowSums(data1_1)
@@ -99,13 +101,36 @@ colnames(early)[which(d1>mean(d1)&d2>mean(d2)&d3>mean(d3))]
 # "A" "C" "M" "W" "X"
 
 # k-means clustering - non-aggregate
-cols = c("red","green","blue","black","yellow","pink")
+cols = c(1:6)
+
 K_Means_CH = function(data,k){
   n = dim(data)[1]
   km = kmeans(data,centers=k,iter.max=1000,alg="Lloyd")
   CH = (km$betweenss/k-1)/((km$totss-km$betweenss)/(n-k))
   return(CH)
 }
+
+#################################
+n = dim(data2)[1]
+k = 6
+km = kmeans(mid,centers=k,iter.max=1000,alg="Lloyd")
+CH = (km$betweenss/k-1)/((km$totss-km$betweenss)/(n-k))
+CH
+pairs(mid,col=alpha(cols[km$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=6") # D
+km$centers
+sum = rowSums(data3_1)
+length(which(km$cluster == 1))
+length(which(km$cluster == 2))
+max(sum[which(km$cluster == 1)])
+min(sum[which(km$cluster == 1)])
+mean(sum[which(km$cluster == 1)])
+max(sum[which(km$cluster == 2)])
+min(sum[which(km$cluster == 2)])
+mean(sum[which(km$cluster == 2)])
+t.test(sum[which(km$cluster == 1)],sum[which(km$cluster == 2)])
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==1)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==2)[1:5]]
+##################################
 
 # early
 km2_1 = kmeans(early,centers=2,iter.max=1000,alg="Lloyd")
@@ -114,11 +139,63 @@ km4_1 = kmeans(early,centers=4,iter.max=1000,alg="Lloyd")
 km5_1 = kmeans(early,centers=5,iter.max=1000,alg="Lloyd")
 km6_1 = kmeans(early,centers=6,iter.max=1000,alg="Lloyd")
 
-pairs(early,col=cols[km2_1$cluster]) # D
-pairs(early,col=cols[km3_1$cluster]) # D,N
-pairs(early,col=cols[km4_1$cluster]) # D,N,P
-pairs(early,col=cols[km5_1$cluster]) # D,N,P,Q
-pairs(early,col=cols[km6_1$cluster]) # D1,N,P,Q,D2
+
+pairs(early,col=alpha(cols[km2_1$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for early trading and k=2") # D
+pairs(early,col=alpha(cols[km3_1$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for early trading and k=3") # P
+pairs(early,col=alpha(cols[km4_1$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for early trading and k=4") # N
+pairs(early,col=alpha(cols[km5_1$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for early trading and k=5") # Q
+pairs(early,col=alpha(cols[km6_1$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for early trading and k=6")
+＃ D
+
+km2_1$centers
+length(which(km2_1$cluster == 1))
+length(which(km2_1$cluster == 2))
+sum = rowSums(data1_1)
+max(sum[which(km2_1$cluster == 1)])
+min(sum[which(km2_1$cluster == 1)])
+mean(sum[which(km2_1$cluster == 1)])
+max(sum[which(km2_1$cluster == 2)])
+min(sum[which(km2_1$cluster == 2)])
+mean(sum[which(km2_1$cluster == 2)])
+t.test(sum[which(km6_2$cluster == 1)],sum[which(km2_3$cluster == 2)])
+data1[order(sum,decreasing = T),1][which(km2_1$cluster[order(sum,decreasing = T)[1:1000]]==1)[1:5]]
+data1[order(sum,decreasing = T),1][which(km2_1$cluster[order(sum,decreasing = T)[1:1000]]==2)[1:5]]
+
+km$centers
+length(which(km$cluster == 1))
+length(which(km$cluster == 2))
+length(which(km$cluster == 3))
+length(which(km$cluster == 4))
+length(which(km$cluster == 5))
+length(which(km$cluster == 6))
+max(sum[which(km$cluster == 1)])
+min(sum[which(km$cluster == 1)])
+mean(sum[which(km$cluster == 1)])
+max(sum[which(km$cluster == 2)])
+min(sum[which(km$cluster == 2)])
+mean(sum[which(km$cluster == 2)])
+max(sum[which(km$cluster == 3)])
+min(sum[which(km$cluster == 3)])
+mean(sum[which(km$cluster == 3)])
+max(sum[which(km$cluster == 4)])
+min(sum[which(km$cluster == 4)])
+mean(sum[which(km$cluster == 4)])
+max(sum[which(km$cluster == 5)])
+min(sum[which(km$cluster == 5)])
+mean(sum[which(km$cluster == 5)])
+max(sum[which(km$cluster == 6)])
+min(sum[which(km$cluster == 6)])
+mean(sum[which(km$cluster == 6)])
+t.test(sum[which(km$cluster == 3)],sum[which(km6_1$cluster != 3)])
+t.test(sum[which(km$cluster == 6)],sum[which(km6_1$cluster != 6)])
+t.test(sum[which(km$cluster == 1)],sum[which(km6_1$cluster == 2)])
+t.test(sum[which(km$cluster == 4)],sum[which(km6_1$cluster == 5)])
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==1)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==2)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:2000]]==3)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==4)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==5)[1:5]]
+data3[order(sum,decreasing = T),1][which(km$cluster[order(sum,decreasing = T)[1:1000]]==6)[1:5]]
 
 # midday
 km2_2 = kmeans(mid,centers=2,iter.max=1000,alg="Lloyd")
@@ -127,11 +204,12 @@ km4_2 = kmeans(mid,centers=4,iter.max=1000,alg="Lloyd")
 km5_2 = kmeans(mid,centers=5,iter.max=1000,alg="Lloyd")
 km6_2 = kmeans(mid,centers=6,iter.max=1000,alg="Lloyd")
 
-pairs(mid,col=cols[km2_2$cluster]) # D
-pairs(mid,col=cols[km3_2$cluster]) # D,P
-pairs(mid,col=cols[km4_2$cluster]) # D1,P,D2
-pairs(mid,col=cols[km5_2$cluster]) # D1,P,D2,N
-pairs(mid,col=cols[km6_2$cluster]) # D1,P,D2,N,Q
+pairs(mid,col=alpha(cols[km2_2$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for midday trading and k=2")
+pairs(mid,col=alpha(cols[km3_2$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for midday trading and k=3")
+pairs(mid,col=alpha(cols[km4_2$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for midday trading and k=4")
+pairs(mid,col=alpha(cols[km5_2$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for midday trading and k=5")
+pairs(mid,col=alpha(cols[km6_2$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for midday trading and k=6")
+
 
 # late
 km2_3 = kmeans(late,centers=2,iter.max=1000,alg="Lloyd")
@@ -140,11 +218,11 @@ km4_3 = kmeans(late,centers=4,iter.max=1000,alg="Lloyd")
 km5_3 = kmeans(late,centers=5,iter.max=1000,alg="Lloyd")
 km6_3 = kmeans(late,centers=6,iter.max=1000,alg="Lloyd")
 
-pairs(late,col=cols[km2_3$cluster]) # D
-pairs(late,col=cols[km3_3$cluster]) # D,N
-pairs(late,col=cols[km4_3$cluster]) # D,N,P
-pairs(late,col=cols[km5_3$cluster]) # D,N,P,Q
-pairs(late,col=cols[km6_3$cluster]) # D,N,P,Q,K
+pairs(late,col=alpha(cols[km2_3$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=2")
+pairs(late,col=alpha(cols[km3_3$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=3")
+pairs(late,col=alpha(cols[km4_3$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=4")
+pairs(late,col=alpha(cols[km5_3$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=5")
+pairs(late,col=alpha(cols[km6_3$cluster],0.3),cex=0.4,pch=16,main="Pairs Plots for late trading and k=6")
 
 # Analysis of trading volumes through clusters
 data1_2 = rowSums(data1_1)
@@ -212,12 +290,12 @@ Primary_Exchange = function(data,tickers){
 }
 
 par(mfrow=c(3,2))
-plot(as.factor(Primary_Exchange(early_ticker2,tickers)),main="Cluster 1 of Early: More trades in D")
-plot(as.factor(Primary_Exchange(early_ticker1,tickers)),main="Cluster 2 of Early: Less trades in D")
-plot(as.factor(Primary_Exchange(mid_ticker1,tickers)),main="Cluster 1 of Midday: More trades in D")
-plot(as.factor(Primary_Exchange(mid_ticker2,tickers)),main="Cluster 2 of Midday: Less trades in D")
-plot(as.factor(Primary_Exchange(late_ticker1,tickers)),main="Cluster 1 of Late: More trades in D")
-plot(as.factor(Primary_Exchange(late_ticker2,tickers)),main="Cluster 2 of Late: Less trades in D")
+plot(as.factor(Primary_Exchange(early_ticker2,tickers)),main="Early K=2: Cluster D", ylim = c(0,1800))
+plot(as.factor(Primary_Exchange(early_ticker1,tickers)),main="Early K=2: Cluster O", ylim = c(0,1800))
+plot(as.factor(Primary_Exchange(mid_ticker2,tickers)),main="Mid K=2: Cluster D", ylim = c(0,1800))
+plot(as.factor(Primary_Exchange(mid_ticker1,tickers)),main="Mid K=2: Cluster O", ylim = c(0,1800))
+plot(as.factor(Primary_Exchange(late_ticker1,tickers)),main="Late K=2: Cluster D", ylim = c(0,1800))
+plot(as.factor(Primary_Exchange(late_ticker2,tickers)),main="Late K=2: Cluster O", ylim = c(0,1800))
 
 e_tick1 = as.character(data1[which(km6_1$cluster==1),1])
 e_tick2 = as.character(data1[which(km6_1$cluster==2),1])
@@ -227,12 +305,12 @@ e_tick5 = as.character(data1[which(km6_1$cluster==5),1])
 e_tick6 = as.character(data1[which(km6_1$cluster==6),1])
 
 par(mfrow=c(3,2))
-plot(as.factor(Primary_Exchange(e_tick1,tickers)),main="Cluster 1 of Early: More trades in N",col=c(2,1))
-plot(as.factor(Primary_Exchange(e_tick2,tickers)),main="Cluster 2 of Early: More trades in P",col=c(1,1,2,1,1))
-plot(as.factor(Primary_Exchange(e_tick3,tickers)),main="Cluster 3 of Early: More trades in D",col=1)
-plot(as.factor(Primary_Exchange(e_tick4,tickers)),main="Cluster 4 of Early: More trades in Q",col=c(1,1,1,2))
-plot(as.factor(Primary_Exchange(e_tick5,tickers)),main="Cluster 5 of Early: More trades in N",col=c(1,2,1,1))
-plot(as.factor(Primary_Exchange(e_tick6,tickers)),main="Cluster 6 of Early: Other",col=1)
+plot(as.factor(Primary_Exchange(e_tick4,tickers)),main="Early K=6: Cluster D1",ylim=c(0,1000),col=1)
+plot(as.factor(Primary_Exchange(e_tick6,tickers)),main="Early K=6: Cluster D2",ylim=c(0,1000),col=1)
+plot(as.factor(Primary_Exchange(e_tick1,tickers)),main="Early K=6: Cluster N",col=c(2,1),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(e_tick2,tickers)),main="Early K=6: Cluster P",col=c(1,1,2,1,1),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(e_tick3,tickers)),main="Early K=6: Cluster Q",col=c(1,1,1,2),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(e_tick5,tickers)),main="Early K=6: Cluster O",ylim=c(0,1000),col=1)
 
 m_tick1 = as.character(data2[which(km6_2$cluster==1),1])
 m_tick2 = as.character(data2[which(km6_2$cluster==2),1])
@@ -242,12 +320,12 @@ m_tick5 = as.character(data2[which(km6_2$cluster==5),1])
 m_tick6 = as.character(data2[which(km6_2$cluster==6),1])
 
 par(mfrow=c(3,2))
-plot(as.factor(Primary_Exchange(m_tick1,tickers)),main="Cluster 1 of Midday: Other",col=1)
-plot(as.factor(Primary_Exchange(m_tick2,tickers)),main="Cluster 2 of Midday: More trades in K",col=1)
-plot(as.factor(Primary_Exchange(m_tick3,tickers)),main="Cluster 3 of Midday: More trades in P",col=c(1,1,2,1,1))
-plot(as.factor(Primary_Exchange(m_tick4,tickers)),main="Cluster 4 of Midday: More trades in D",col=1)
-plot(as.factor(Primary_Exchange(m_tick5,tickers)),main="Cluster 5 of Midday: More trades in Q",col=c(1,1,1,2,1))
-plot(as.factor(Primary_Exchange(m_tick6,tickers)),main="Cluster 6 of Midday: More trades in N",col=c(1,2,1,1,1))
+plot(as.factor(Primary_Exchange(m_tick2,tickers)),main="Mid K=6: Cluster D1",col=1,ylim=c(0,1200))
+plot(as.factor(Primary_Exchange(m_tick4,tickers)),main="Mid K=6: Cluster D2",col=1,ylim=c(0,1200))
+plot(as.factor(Primary_Exchange(m_tick3,tickers)),main="Mid K=6: Cluster N",col=c(1,2,1,1),ylim=c(0,1200))
+plot(as.factor(Primary_Exchange(m_tick5,tickers)),main="Mid K=6: Cluster P",col=c(1,1,2,1,1),ylim=c(0,1200))
+plot(as.factor(Primary_Exchange(m_tick6,tickers)),main="Mid K=6: Cluster Q",col=c(1,1,1,2,1),ylim=c(0,1200))
+plot(as.factor(Primary_Exchange(m_tick1,tickers)),main="Mid K=6: Cluster O",col=1, ylim=c(0,1200))
 
 l_tick1 = as.character(data3[which(km6_3$cluster==1),1])
 l_tick2 = as.character(data3[which(km6_3$cluster==2),1])
@@ -257,12 +335,12 @@ l_tick5 = as.character(data3[which(km6_3$cluster==5),1])
 l_tick6 = as.character(data3[which(km6_3$cluster==6),1])
 
 par(mfrow=c(3,2))
-plot(as.factor(Primary_Exchange(l_tick1,tickers)),main="Cluster 1 of Late: Other",col=1)
-plot(as.factor(Primary_Exchange(l_tick2,tickers)),main="Cluster 2 of Late: More trades in Q",col=c(1,1,1,2))
-plot(as.factor(Primary_Exchange(l_tick3,tickers)),main="Cluster 3 of Late: More trades in P",col=c(1,1,2,1))
-plot(as.factor(Primary_Exchange(l_tick4,tickers)),main="Cluster 4 of Late: Moderate trades in D",col=1)
-plot(as.factor(Primary_Exchange(l_tick5,tickers)),main="Cluster 5 of Late: Most trades in D",col=1)
-plot(as.factor(Primary_Exchange(l_tick6,tickers)),main="Cluster 6 of Late: More trades in N",col=2)
+plot(as.factor(Primary_Exchange(l_tick4,tickers)),main="Late K=6: Cluster D1",col=1,ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(l_tick1,tickers)),main="Late K=6: Cluster D2",col=1,ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(l_tick5,tickers)),main="Late K=6: Cluster N",col=c(2,1),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(l_tick2,tickers)),main="Late K=6: Cluster P",col=c(1,1,2,1),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(l_tick6,tickers)),main="Late K=6: Cluster Q",col=c(1,1,1,2),ylim=c(0,1000))
+plot(as.factor(Primary_Exchange(l_tick3,tickers)),main="Late K=6: Cluster K",col=1,ylim=c(0,1000))
 
 ########## 4. Binary and Three ##########
 
@@ -473,14 +551,16 @@ TP_Cluster("late1","Q",10)
 # early
 pc.1 = prcomp(early,scale.=T)
 summary(pc.1)
-d1 = pc.1$rotation
+d1 = round(pc.1$rotation,digit=3)
 
 # midday
 pc.2 = prcomp(mid,scale.=T)
 summary(pc.2)
-d2 = pc.2$rotation
+d2 = round(pc.2$rotation,digit=3)
 
 # late
 pc.3 = prcomp(late,scale.=T)
 summary(pc.3)
-d3 = pc.3$rotation
+d3 = round(pc.3$rotation,digit=3)
+write.csv2(d2,"a.csv")
+write.csv2(d3,"b.csv")
