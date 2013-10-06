@@ -20,21 +20,11 @@ assign_buy_bid_ask <- function(bid, ask, price){
   }
 }
 
-assign_buy <- function(prev_prev_price, prev_price, price, 
-                       use_sub_penny_rule, use_momentum_rule){
-  p <- 0.0
-  prev_p <- 0.0
-  if (use_sub_penny_rule){
-    p <- price
-    prev_p <- prev_price
-  }else{
-    p<-round(price,2)
-    prev_p <- round(prev_price,2)
-  }
-  if (use_momentum_rule && p==prev_p){
-    if (prev_prev_price < p){
+assign_buy <- function(prev_prev_p, prev_p, p){
+  if (p==prev_p){
+    if (prev_prev_p < p){
       return (1)
-    }else if (prev_prev_price > p){
+    }else if (prev_prev_p > p){
       return (-1)
     }else{
       return (0)
@@ -46,23 +36,6 @@ assign_buy <- function(prev_prev_price, prev_price, price,
       return (-1)
     }else{
       return (0)
-    }
-  }
-}
-
-modify_series <- function(series, burn_size){
-  cut <- 0.0
-  for (i in 1:length(series)){
-    cut <- cut + series[i]
-    if (cut >= burn_size){
-      s <- vector()
-      if (cut == burn_size){
-        s <- series[i+1:length(series)]
-      }else{
-        s <- c(cut-burn_size, series[i+1:length(series)])
-      }
-      s <- s[!is.na(s)]
-      return (s)
     }
   }
 }
@@ -154,67 +127,13 @@ calc_SOI <- function(interval, trades){
   return (cbind(OI_buckets, price_returns))
 }
 
-
-calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_period
-                                  , compute_pure_volume=F) {
-  volume_volatilities <- vector()
-  vol_vector <- vector()
-  cum_volume <- 0.0
-  i <- 1
-  burn <- 0
-  first_burn <- T
-  while (i != length(trades[,1])){
-    volume <- as.numeric(trades[i,"size"])
-    #print(paste("volume: ",volume))
-    cum_volume <- cum_volume + volume
-    #print(paste("cum volume: ",cum_volume))
-    vol_vector <- c(vol_vector, volume)
-    if (((cum_volume >= bucket_volume_size * realized_vol_period) && first_burn)
-        || ((cum_volume >= bucket_volume_size) && !first_burn)){
-      if (!first_burn){
-        burn <- burn + 1
-      }
-      if (((cum_volume == bucket_volume_size * realized_vol_period) && first_burn)
-          || ((cum_volume == bucket_volume_size) && !first_burn)){
-        i <- i + 1
-      }else{
-        if (first_burn){
-          #print(paste("Set trade size to : ",cum_volume - bucket_volume_size*realized_vol_period))
-          trades[i,"size"] <- cum_volume - bucket_volume_size*realized_vol_period
-        }else{
-          #print(paste("Set trade size to : ",cum_volume - bucket_volume_size))
-          trades[i,"size"] <- cum_volume - bucket_volume_size
-        }
-
-      }
-      first_burn <- F
-      #print(paste("VEC: ",modify_series(vol_vector, burn * bucket_volume_size)))
-      #print(paste("VOL: ", sd(modify_series(vol_vector, burn * bucket_volume_size))))
-      if (!compute_pure_volume){
-        volume_volatilities <- c(volume_volatilities, var(modify_series(vol_vector, burn * bucket_volume_size)))
-      }else{
-        volume_volatilities <- c(volume_volatilities, sum(modify_series(vol_vector, burn * bucket_volume_size)))
-      }
-      cum_volume <- 0.0
-      
-    }
-    else{
-      i <- i + 1
-    } 
-  }
-  return (volume_volatilities)
-}
-
 #interval in seconds
 calc_OI_by_time_buckets <- function(interval
                                     , trades
                                     , bucket_volume_size
-                                    , use_gaussian
-                                    , L=50
-                                    , signed=F
-                                    , use_momentum_rule = T
-                                    , use_sub_penny_rule = T
-                                    , use_trades = T
+                                    , use_gaussian = F
+                                    , signed = T
+                                    , use_trades = F
 ) {
   m_interval <- interval * 1000 #use miliseconds
   options(digits.secs=9)
@@ -227,7 +146,7 @@ calc_OI_by_time_buckets <- function(interval
   OI_buckets <- vector()
   price_returns <- vector()
   price_volatilities <- vector()
-  price_returns_finer_grained <- vector()
+  #price_returns_finer_grained <- vector()
   gaussian_sigma_vector <- vector()
   first_record <- T
   
@@ -243,7 +162,9 @@ calc_OI_by_time_buckets <- function(interval
   prev_ask <- 0.0
   bid <- 0.0
   ask <- 0.0
-  mid <- 0.0
+  ema_bid <- 0.0
+  ema_ask <- 0.0
+  L <- 50
   
   use_quotes <- F
   qc <- 0; trlen <- length(trades[,1])
@@ -253,16 +174,15 @@ calc_OI_by_time_buckets <- function(interval
     
     if (type == 'Q'){ # This is a Quote
       prev_symbol <- 'Q'
-      mid <- (trades$bid[i+qc] + trades$ask[i+qc])/2
       prev_prev_bid <- prev_bid
       prev_prev_ask <- prev_ask
       prev_bid <- bid
       prev_ask <- ask
-      #bid <- trades$bid[i+qc]
-      bid <- trades$ema_mid[i+qc]
-      #ask <- trades$ask[i+qc]
-      ask <- trades$ema_mid[i+qc]
-      
+      bid <- trades$bid[i+qc]
+      ask <- trades$ask[i+qc]
+
+      ema_bid <- trades$ema_bid[i+qc]
+      ema_ask <- trades$ema_ask[i+qc]
       qc <- qc+1
       next
     }
@@ -283,12 +203,12 @@ calc_OI_by_time_buckets <- function(interval
       first_record <- F
     }
     
-    price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
-    gaussian_sigma_vector <- c(gaussian_sigma_vector, price-prev_price)
-    entries <- length(gaussian_sigma_vector)
-    if (entries > L){
-      gaussian_sigma_vector <- gaussian_sigma_vector[2:entries]
-    }
+    #price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    #gaussian_sigma_vector <- c(gaussian_sigma_vector, price-prev_price)
+    #entries <- length(gaussian_sigma_vector)
+    #if (entries > L){
+    #  gaussian_sigma_vector <- gaussian_sigma_vector[2:entries]
+    #}
     
     if (volume_count + volume >= bucket_volume_size){ #filled one bucket
       residual_volume <- bucket_volume_size - volume_count
@@ -300,9 +220,9 @@ calc_OI_by_time_buckets <- function(interval
       }
       else{
         if (use_quotes){
-          b <- assign_buy_bid_ask(bid, ask, price)
+          b <- assign_buy_bid_ask(ema_bid, ema_ask, price)
         }else{
-          b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)
+          b <- assign_buy(prev_prev_price, prev_price, price)
         }
       }
       OI <- OI + b*residual_volume
@@ -311,16 +231,14 @@ calc_OI_by_time_buckets <- function(interval
       }else{
         i <- i+1
       }
-      
-      #price_returns <- c(price_returns, log(price/prev_bucket_price))
-      #price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
-      price_returns <- c(price_returns, log(mid/((prev_bid+prev_ask)/2)))
-      
-      price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
 
-      if ((j %% L) == 0){ # using L number of buckets
-        price_returns_finer_grained <- vector()
-      }
+      price_returns <- c(price_returns, log(((bid+ask)/2)/((ema_bid+ema_ask)/2)))
+      
+      #price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
+
+      #if ((j %% L) == 0){ # using L number of buckets
+      #  price_returns_finer_grained <- vector()
+      #}
       
       OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
       
@@ -343,9 +261,9 @@ calc_OI_by_time_buckets <- function(interval
     if((tm - start_t) > m_interval){ 
       #print("filled one bin--->")
       if (use_quotes){
-        b <- assign_buy_bid_ask(bid, ask, price)
+        b <- assign_buy_bid_ask(ema_bid, ema_ask, price)
       }else{
-        b <- assign_buy(prev_prev_price, prev_price, price, use_sub_penny_rule, use_momentum_rule)
+        b <- assign_buy(prev_prev_price, prev_price, price)
       }
       OI <- OI + b*bucket_volume
       
@@ -361,8 +279,8 @@ calc_OI_by_time_buckets <- function(interval
 	  OI_buckets = abs(OI_buckets);
   }
   
-  OI_vs_delta_prices <- data.frame(OI_buckets, price_returns, price_volatilities)
-
+  #OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
+  OI_vs_delta_prices <- cbind(OI_buckets, price_returns)
   return (OI_vs_delta_prices)
 }
 
@@ -382,26 +300,39 @@ delay_quotes_xms <- function(data_a, delay_time){ #delay time in miliseconds
   return(data_a[order(data_a$exchange_time), ])
 }
 
-filter_emaquotes_trades <- function(a,alpha=1,vol_lim=10000){
-  a <- a[order(a$exchange_time),]
-  a$ema_mid[a$type == "Q"] <- cal_quotes_EMA2(a,alpha)
-  a <- filter_trades_quotes3(a, vol_lim)
-  #plot(index(mid_quotes),mid_quotes,type="l")
-  #lines(index(quotes_ema),quotes_ema,col="red")
-  return(a)
-}
-
-
-cal_quotes_EMA2 <- function(a,alpha=1){
+cal_quotes_EMA <- function(a,alpha=1){
   delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
   weights <- cumprod(exp(alpha*delta_t))
   mid_quotes <- 0.5 * (a$bid[a$type == "Q"]+a$ask[a$type == "Q"]);
   quotes_ema <- cumsum(weights*mid_quotes)/cumsum(weights)
   #plot(index(mid_quotes),mid_quotes,type="l")
   #lines(index(EMA_q),EMA_q,col="red")
-  return(quotes_ema)
+  a$ema_mid[a$type == "Q"] <- quotes_ema
+  return(a)
 }
 
+#Somehow produces different results than EMA1
+cal_quotes_EMA3 <- function(a,alpha=1){
+  dt <- c(1e5, diff(a$exchange_time[a$type == 'Q']))
+  iw <- exp(-dt*alpha)
+  mid <- 0.5 * (a$bid[a$type == 'Q'] + a$ask[a$type == 'Q'])
+  rs <<- 0
+  rw <<- 0
+  emamid <- apply(data.frame(iw, mid), 1, function (x) { rs <<- rs * x[1] + x[2]; rw <<- rw * x[1] + 1; return (rs/rw); })
+  a$ema_mid[a$type == "Q"] <- emamid
+  return (a)
+}
+
+cal_quotes_EMA_bid_ask <- function(a,alpha=1){
+  a <- a[order(a$exchange_time),]
+  delta_t <- c(0,diff(a$exchange_time[a$type == "Q"]/100000))
+  weights <- cumprod(exp(alpha*delta_t))
+  bid_ema <- cumsum(weights*a$bid[a$type == "Q"])/cumsum(weights)
+  ask_ema <- cumsum(weights*a$ask[a$type == "Q"])/cumsum(weights)
+  a$ema_bid[a$type == "Q"] <- bid_ema
+  a$ema_ask[a$type == "Q"] <- ask_ema
+  return(a)
+}
 
 filter_trades_quotes2 <- function(a, volume_limit=10000){ #designed to reduce the # of quotes necessary for processing data
   indd <- which(a$type == 'T' & a$size <= volume_limit);
@@ -417,18 +348,10 @@ filter_trades_quotes3 <- function(a, volume_limit=10000){
   q2 <- floor(a$quals / 256) %% 256
   q3 <- floor(a$quals / 256 / 256) %% 256
   q4 <- floor(a$quals / 256 / 256 / 256)
-  keep <- a$type == 'T' & a$size <= volume_limit & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
+  #keep <- a$type == 'T' & a$size <= volume_limit & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
+  keep <- a$type == 'T' & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
   trades_quotes <- a[keep | c(keep[2:length(keep)], FALSE),]
+  block_trades <- which(trades_quotes$size > volume_limit && trades_quotes$type == 'T')
+  trades_qutoes$size[block_trades] = volume_limit
   return (trades_quotes)
-}
-
-compute_quotes_ema <- function(quotes, decay){
-  l_entry <- length(quotes$bid)
-  const_weight <- 1/l_entry
-  a <- exp(-diff(quotes$exchange_time)/decay)
-  EMA(quotes$bid,a)
-  running_sum <- cumsum(a*(quotes$bid[-1] + quotes$ask[-1])/2)
-  running_weights <- const_weight + cumsum(a*const_weight*l_entry)
-  mid_price <- (running_sum/running_weights)
-  return (cbind(quotes[1:(l_entry-1),], mid_price))
 }

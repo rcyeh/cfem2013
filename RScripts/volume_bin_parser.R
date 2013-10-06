@@ -1,4 +1,21 @@
 
+modify_series <- function(series, burn_size){
+  cut <- 0.0
+  for (i in 1:length(series)){
+    cut <- cut + series[i]
+    if (cut >= burn_size){
+      s <- vector()
+      if (cut == burn_size){
+        s <- series[i+1:length(series)]
+      }else{
+        s <- c(cut-burn_size, series[i+1:length(series)])
+      }
+      s <- s[!is.na(s)]
+      return (s)
+    }
+  }
+}
+
 calc_OI_by_volume_buckets <- function(fixed_volume, trades
                                       , bucket_volume_size
                                       , use_gaussian
@@ -140,4 +157,55 @@ calc_OI_by_volume_buckets <- function(fixed_volume, trades
   
   OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
   return (OI_vs_delta_prices)
+}
+
+
+calc_volat_by_volumes <- function(trades, bucket_volume_size, realized_vol_period
+                                  , compute_pure_volume=F) {
+  volume_volatilities <- vector()
+  vol_vector <- vector()
+  cum_volume <- 0.0
+  i <- 1
+  burn <- 0
+  first_burn <- T
+  while (i != length(trades[,1])){
+    volume <- as.numeric(trades[i,"size"])
+    #print(paste("volume: ",volume))
+    cum_volume <- cum_volume + volume
+    #print(paste("cum volume: ",cum_volume))
+    vol_vector <- c(vol_vector, volume)
+    if (((cum_volume >= bucket_volume_size * realized_vol_period) && first_burn)
+        || ((cum_volume >= bucket_volume_size) && !first_burn)){
+      if (!first_burn){
+        burn <- burn + 1
+      }
+      if (((cum_volume == bucket_volume_size * realized_vol_period) && first_burn)
+          || ((cum_volume == bucket_volume_size) && !first_burn)){
+        i <- i + 1
+      }else{
+        if (first_burn){
+          #print(paste("Set trade size to : ",cum_volume - bucket_volume_size*realized_vol_period))
+          trades[i,"size"] <- cum_volume - bucket_volume_size*realized_vol_period
+        }else{
+          #print(paste("Set trade size to : ",cum_volume - bucket_volume_size))
+          trades[i,"size"] <- cum_volume - bucket_volume_size
+        }
+        
+      }
+      first_burn <- F
+      #print(paste("VEC: ",modify_series(vol_vector, burn * bucket_volume_size)))
+      #print(paste("VOL: ", sd(modify_series(vol_vector, burn * bucket_volume_size))))
+      if (!compute_pure_volume){
+        volume_volatilities <- c(volume_volatilities, var(modify_series(vol_vector, burn * bucket_volume_size)))
+      }else{
+        volume_volatilities <- c(volume_volatilities, sum(modify_series(vol_vector, burn * bucket_volume_size)))
+      }
+      cum_volume <- 0.0
+      
+    }
+    else{
+      i <- i + 1
+    } 
+  }
+  return (volume_volatilities)
 }
