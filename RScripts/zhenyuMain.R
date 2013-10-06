@@ -98,7 +98,6 @@ for (m in 1:l_tickers){
             
             SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size, F, L, T)     
             l_prices = length(SOI_buckets_delta_prices[,2])
-ssss
             r2 <- summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]))$adj.r.squared
             r2p <- summary(lm(SOI_buckets_delta_prices[-c(1,2),2]~SOI_buckets_delta_prices[-c(1,l_prices),1]*SOI_buckets_delta_prices[-c(1,l_prices),3]))$adj.r.squared
 
