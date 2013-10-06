@@ -42,7 +42,7 @@ assign_buy <- function(prev_prev_p, prev_p, p){
 
 calc_SOI <- function(interval, trades){
   
-  m_interval <- interval / 60.0
+  m_interval <- interval *1000 #/ 60.0
   options(digits.secs=9)
   start_t <- 0
   
@@ -63,6 +63,8 @@ calc_SOI <- function(interval, trades){
   prev_ask <- 0.0
   bid <- 0.0
   ask <- 0.0
+  ema_bid <-0.0
+  ema_ask <-0.0
   use_quotes <- F
   
   first_record <- T
@@ -82,13 +84,15 @@ calc_SOI <- function(interval, trades){
       prev_ask <- ask
       bid <- trades$bid[i+qc]
       ask <- trades$ask[i+qc]
+      ema_bid <- trades$ema_bid[i+qc]
+      ema_ask <- trades$ema_ask[i+qc]
       qc <- qc+1
       next
     }
     else{ # This is a trade
       if (first_record){ #first record
         price <- trades$price[i+qc]
-        start_t <- trades$time[i+qc]
+        start_t <- trades$exchange_time[i+qc]
         prev_price <- price
         prev_prev_price <- price
         prev_bucket_price <- price
@@ -97,21 +101,21 @@ calc_SOI <- function(interval, trades){
       if (prev_symbol != 'X'){ use_quotes <- T }
     }
     
-    time <- trades$time[i+qc]
+    time <- trades$exchange_time[i+qc]
     volume <- trades$size[i+qc]
     price <- trades$price[i+qc]
     
     if (use_quotes){
-      b <- assign_buy_bid_ask(bid, ask, price)
+      b <- assign_buy_bid_ask(ema_bid, ema_ask, price)
     }else{
-      b <- assign_buy(prev_prev_price, prev_price, price, T, T)
+      b <- assign_buy(prev_prev_price, prev_price, price)
     }
     
     OI <- OI + b*volume
     total_volume <- total_volume + volume
     
-    if(((time - start_t) > m_interval)|| ((i+q)==length(trades[,1]))){  
-      print ("Filled one Bucket")
+    if(((time - start_t) > m_interval)|| ((i+qc)==length(trades[,1]))){  
+      #print ("Filled one Bucket")
       #price_returns <- c(price_returns, log(price/prev_bucket_price))
       price_returns <- c(price_returns, log(((bid+ask)/2)/((prev_bid+prev_ask)/2)))
       prev_bucket_price <- price
@@ -352,6 +356,6 @@ filter_trades_quotes3 <- function(a, volume_limit=10000){
   keep <- a$type == 'T' & q1 != 32 & q2 != 32 & q3 != 32 & q4 != 32 & q1 != 59 & q2 != 59 & q3 != 59 & q4 != 59
   trades_quotes <- a[keep | c(keep[2:length(keep)], FALSE),]
   block_trades <- which(trades_quotes$size > volume_limit && trades_quotes$type == 'T')
-  trades_qutoes$size[block_trades] = volume_limit
+  trades_quotes$size[block_trades] = volume_limit
   return (trades_quotes)
 }
