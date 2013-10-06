@@ -21,16 +21,18 @@ for(i in 1:l_exchanges){
   a <- h5read("ticks.20130423.h5", paste("/ticks/",tick,sep=""), bit64conversion='double')
   for(j in 1:l_delay){
     delay <- delays[j]
-    quotes$exchange_time[quotes$type == 'Q'] <- quotes$exchange_time[quotes$type == 'Q'] + delay/1000
-    quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
-    bidd <- data.frame(price = quotes$bid[quotes$bid_exchange == exchg],exchange_time = quotes$exchange_time[quotes$bid_exchange == exchg], type = "Q")
-    askd <- data.frame(price = quotes$ask[quotes$ask_exchange == exchg],exchange_time =  quotes$exchange_time[quotes$ask_exchange == exchg], type = "Q")
-    trade <- data.frame(price = a$price[a$type == 'T'],exchange_time = a$exchange_time[a$type == 'T'],type = "T")
-    bidtrade <- rbind(bidd,trade)
+    a$exchange_time[a$type == 'Q'] <- a$exchange_time[a$type == 'Q'] + delay/1000
+    #quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
+    #trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+    ask <- a[a$ask_exchange == exchg,]
+    bid <- a[a$bid_exchange == exchg,]
+    trades <- a[a$type == "T",]
+    bidtrade <- rbind(bid,trades)
     bidtrade <- bidtrade[order(bidtrade$exchange_time),]
-    asktrade <- rbind(askd,trade)
+    asktrade <- rbind(ask,trades)
     asktrade <- asktrade[order(asktrade$exchange_time),]
-    
+    f_bt <- filter_trades_quotes3(bidtrade)
+    f_st <- filter_trades_quotes3(asktrade)
     
     
   }
