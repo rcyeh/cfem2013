@@ -390,14 +390,14 @@ buildmodel <- function(ticker,traindate,timebucket_size,threshold,scatterplot = 
   if(scatterplot){
     plot(crossterm,SOI_buckets_delta_prices[,2],
          main= paste("Concurrent In Sample\n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
-         xlab= paste("MSOI\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
+         xlab= paste("SSOI\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
          ylab=expression("PRetrun"))
     abline(lm10, col="red")
   }
   if(fittedvsactualplot){
     plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
          main= paste("Concurrent In Sample Plot \n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
-         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
+         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
          ylab=expression("PRetrun"))
     lines(index(lm10$fitted.values)*timebucket_size/60,lm10$fitted.values,col="red",lty=1)
   }
@@ -416,7 +416,7 @@ outtest <- function(model,ticker,testdate,timebucket_size,threshold,lineplot = T
   if(lineplot){
     plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
          main= paste("Concurrent Out of Sample Test \n",ticker," ",timebucket_size,"s time bucket",sep=""),
-         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), CDPR =",round(cdpr*100,1),"%",sep=""),
+         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), CDPR =",round(cdpr*100,1),"%",sep=""),
          ylab=expression("PRetrun"))
     #CDPR: correct direction prediction Ratio
     lines(index(testpredict)*timebucket_size/60,testpredict,col="red",lty=1)
