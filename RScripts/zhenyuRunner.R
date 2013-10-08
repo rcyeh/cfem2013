@@ -1,23 +1,71 @@
 #Please change your source file path
 source("C:/cfem2013_midterm/RScripts/parser.R")
 
-#a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
+#tickers <- c('AMZN', 'BA','TIF','AGN','CAT','BAC','MSFT')
+tickers <- c('BAC','MSFT')
+dates <- c('20130423','20130424','20130425','20130426','20130429')
+am_vol <- 2270014 #AMZN volume, corresponding to 60s
 
-#quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
+windows()
+par(mfrow=c(1,2))
+l_tickers <-length(tickers)
 
-#a[["time"]] <- as.integer(as.POSIXct(strptime(a[["time"]],"%H:%M:%OS")))
-#quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
-#trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+for (m in 1:l_tickers){
+  tick <- tickers[m]
+  for (l in 1:length(dates)){
+    date = dates[l]
+    
+    a <- h5read(paste("ticks.",date,".h5",sep=""), paste("/ticks/",tick,sep=""), bit64conversion='double')
+    trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+    total_volume <- trades$volume[length(trades[,1])]
+
+    #delayed_a <- cal_quotes_EMA_bid_ask(delay_quotes_xms(a,q_delay),decay)
+    trades_quotes <- filter_trades_quotes3(a, thres_h)
+    time_bucket <- max(am_vol/total_volume * 60,60)
+  
+    SOI_buckets_delta_prices <- calc_SOI(time_bucket, trades_quotes,T)
+  
+    l_prices = length(SOI_buckets_delta_prices[,2])
+    # power transformation of ^0.45
+    ind_var <- (SOI_buckets_delta_prices[-1,1]*SOI_buckets_delta_prices[-1,3])
+    ind_var_pred <- (SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3])
+  
+    ind_var_trans <- ind_var^0.45 
+    plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
+     
+    ind_var_pred_trans <- ind_var_pred^0.45
+    plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
+    
+  
+    r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_trans))$r.squared
+    r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_pred_trans))$r.squared
+    
+    t1 <- paste("T_",tick,"_",dates[l],"_R^2=",round(r2,4),sep="")
+    plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
+    title(t1)
+    
+    t2 <- paste("T+1_",tick,"_",dates[l],"_R^2=",round(r2p,4),sep="")
+    plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
+    title(t2)
+    
+    dev.copy2pdf(file = paste(tick,"_",date,".pdf",sep=""))
+    #plot(SOI_buckets_delta_prices[-1,1], SOI_buckets_delta_prices[-1,2])
+  
+    #r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-1,1]))$r.squared
+    #r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]))$r.squared
+    #print(paste(key, ": ",r2,",",r2p))
+  }
+}
 
 
-L <- 50
 #time <- seq(30,150,15)
-time <- 135
+time <- 30
 #bucket <- seq(1000,5000,1000)
 bucket <- 10000
 #thres <- seq(1000,10000,3000) 
-thres <- 2000 
+thres <- 10000 
 delays <- seq(0,0.1,0.005)
+#delays <- 0.05
 ema_decay_rate <- seq(0.5,2,0.25)
 l_ema <- length(ema_decay_rate)
 l_delays <- length(delays)
@@ -26,8 +74,8 @@ l_bucket <- length(bucket)
 l_thres <- length(thres)
 R2s <- c()
 R2s_pred <- c()
-#tickers <- c('AMZN', 'BA','TIF','AGN','CAT')
-tickers <- c('AGN')
+tickers <- c('BAC','MSFT')
+
 l_tickers <-length(tickers)
 
 for (m in 1:l_tickers){
@@ -44,11 +92,13 @@ for (m in 1:l_tickers){
             thres_h <- thres[k]
             q_delay <- delays[l]
             decay <- ema_decay_rate[m]
-            key <- paste(tick,"_",bucket_size,"_",time_bin,"_",thres_h,"_",q_delay,"_",decay,sep="")
+            #key <- paste(tick,"_",bucket_size,"_",time_bin,"_",thres_h,"_",q_delay,"_",decay,sep="")
+            key <- paste(tick,"_",decay,sep="")
             delayed_a <- cal_quotes_EMA_bid_ask(delay_quotes_xms(a,q_delay),decay)
             trades_quotes <- filter_trades_quotes3(delayed_a, thres_h)
-
-            SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size)     
+            
+            SOI_buckets_delta_prices <- calc_OI_by_time_buckets(time_bin,trades_quotes,bucket_size)
+            calc_SOI(100, trades_quotes)
             l_prices = length(SOI_buckets_delta_prices[,2])
             r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-1,1]))$r.squared
             r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]))$r.squared
@@ -66,4 +116,3 @@ for (m in 1:l_tickers){
     R2s_pred <-c()
   }
 }
-
