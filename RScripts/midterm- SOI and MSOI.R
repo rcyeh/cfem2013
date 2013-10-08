@@ -31,9 +31,9 @@ plot(crossterm,SOI_buckets_delta_prices[,2],
 abline(lm11, col="red")
 
 ##### Out of sample test #####
-model1 <- buildmodel("AMZN","20130423",60,1000)
+model1 <- buildmodel("AMZN","20130423",60,1000,T)
 outtest(model1,"AMZN","20130429",60,1000)
-
+#CDPR: correct direction prediction Ratio
 
 
 

@@ -387,6 +387,9 @@ buildmodel <- function(ticker,traindate,timebucket_size,threshold,scatterplot = 
   lm10 <- lm(preturn ~ crossterm, data = traindata)
   r2 <- summary(lm10)$r.squared
   ### train scatter plot ###
+  if(scatterplot & fittedvsactualplot){
+    par(mfrow=c(2,1))
+  }
   if(scatterplot){
     plot(crossterm,SOI_buckets_delta_prices[,2],
          main= paste("Concurrent In Sample\n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
