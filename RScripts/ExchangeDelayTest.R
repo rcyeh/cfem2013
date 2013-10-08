@@ -25,7 +25,7 @@ setwd("/Users/JiaXu/Documents/FE project")
 exchanges <- c('A','B','C','J','K','M','N','P','Q','W','X','Y','Z')
 tickers <- c('LNG','BDBD','LNG','UUP','UYG','A','AGN','QCLN','CLMT','MTU','ODP','PPC','BBG')
 l_exchanges <- length(exchanges)
-delays <- seq(-0.5,3,0.5)
+delays <- seq(-0.5,0.5,0.1)
 l_delay <- length(delays)
 score <- data.frame(exchange = c('A','B','C','J','K','M','N','P','Q','W','X','Y','Z'),delay = 0, score = 0)
 
@@ -75,6 +75,7 @@ for(i in 1:l_exchanges){
     score$exchange[j+(i-1)*l_delay] = exchg
     score$delay[j+(i-1)*l_delay] = delay
     mini = apply(data.frame(absask = abs(trade_price - ask_price),absbid = abs(trade_price - bid_price)),1,min)
-    score$score[j+(i-1)*l_delay] = mean(mini^2)
+    score$score[j+(i-1)*l_delay] = mini
   }
 }
+

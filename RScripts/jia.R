@@ -16,9 +16,17 @@ setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
 a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
-
+a <- a[order(a$exchange_time),]
 #quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
-trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+#trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
+trades_quotes <- filter_trades_quotes3(a,1000)
+#SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135,trades_quotes,20000,T) 
+SOI_buckets_delta_prices <- calc_SOI(60,trades_quotes) 
+
+crossterm <- SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]
+lm10 <- lm(SOI_buckets_delta_prices[,2] ~ crossterm)
+summary(lm10)
+plot(SOI_buckets_delta_prices[,1],SOI_buckets_delta_prices[,2])
 
 a <- h5read("ticks.20130423.h5","/ticks/AGN",bit64conversion='double')
 trades_quotes <- cal_quotes_EMA(delay_quotes_xms(a,0.025),1.5,2000)
