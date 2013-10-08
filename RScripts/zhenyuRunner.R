@@ -1,13 +1,14 @@
 #Please change your source file path
 source("C:/cfem2013_midterm/RScripts/parser.R")
 
-#tickers <- c('AMZN', 'BA','TIF','AGN','CAT','BAC','MSFT')
-tickers <- c('BAC','MSFT')
-dates <- c('20130423','20130424','20130425','20130426','20130429')
+#tickers <- c('AMZN', 'BA','TIF','AGN','CAT') #,'BAC','MSFT')
+tickers <- c('CAT')
+dates <- c('20130423','20130424','20130425','20130426','20130429','20130430')
 am_vol <- 2270014 #AMZN volume, corresponding to 60s
+thres_h <- 10000
 
 windows()
-par(mfrow=c(1,2))
+par(mfrow=c(3,2))
 l_tickers <-length(tickers)
 
 for (m in 1:l_tickers){
@@ -21,7 +22,7 @@ for (m in 1:l_tickers){
 
     #delayed_a <- cal_quotes_EMA_bid_ask(delay_quotes_xms(a,q_delay),decay)
     trades_quotes <- filter_trades_quotes3(a, thres_h)
-    time_bucket <- max(am_vol/total_volume * 60,60)
+    time_bucket <- am_vol/total_volume * 60
   
     SOI_buckets_delta_prices <- calc_SOI(time_bucket, trades_quotes,T)
   
@@ -31,30 +32,32 @@ for (m in 1:l_tickers){
     ind_var_pred <- (SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3])
   
     ind_var_trans <- ind_var^0.45 
-    plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
+    #plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
      
-    ind_var_pred_trans <- ind_var_pred^0.45
-    plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
+    #ind_var_pred_trans <- ind_var_pred^0.45
+    #plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
     
   
     r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_trans))$r.squared
-    r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_pred_trans))$r.squared
+    #r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_pred_trans))$r.squared
     
-    t1 <- paste("T_",tick,"_",dates[l],"_R^2=",round(r2,4),sep="")
-    plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
+    t1 <- paste(tick,"_",dates[l],"\nR^2=",round(r2,4),sep="")
+    plot(ind_var_trans, SOI_buckets_delta_prices[-1,2]
+         ,xlab="X(t) = power(SOI(t)·Var_Price(t),0.45)",ylab=" Quotes_mid")
     title(t1)
+    abline(lm(SOI_buckets_delta_prices[-1,2]~ind_var_trans),col="red")
+    #t2 <- paste("T+1_",tick,"_",dates[l],"_R^2=",round(r2p,4),sep="")
+    #plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
+    #title(t2)
     
-    t2 <- paste("T+1_",tick,"_",dates[l],"_R^2=",round(r2p,4),sep="")
-    plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
-    title(t2)
-    
-    dev.copy2pdf(file = paste(tick,"_",date,".pdf",sep=""))
+    #dev.copy2pdf(file = paste(tick,"_",date,".pdf",sep=""))
     #plot(SOI_buckets_delta_prices[-1,1], SOI_buckets_delta_prices[-1,2])
   
     #r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-1,1]))$r.squared
     #r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]))$r.squared
     #print(paste(key, ": ",r2,",",r2p))
   }
+  dev.copy2pdf(file = paste(tick,".pdf",sep=""))
 }
 
 

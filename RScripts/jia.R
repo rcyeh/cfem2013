@@ -24,9 +24,14 @@ trades_quotes <- filter_trades_quotes3(a,1000)
 SOI_buckets_delta_prices <- calc_SOI(60,trades_quotes) 
 
 crossterm <- SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]
-lm10 <- lm(SOI_buckets_delta_prices[,2] ~ crossterm)
+lm10 <- lm(SOI_buckets_delta_prices[,2] ~ SOI_buckets_delta_prices[,1])
 summary(lm10)
-plot(SOI_buckets_delta_prices[,1],SOI_buckets_delta_prices[,2])
+plot(SOI_buckets_delta_prices[,1],SOI_buckets_delta_prices[,2],
+     main="Concurrent analysis \nstock AMZN _ time bucket 60 sec",
+     xlab=paste("SOI \nFormula: Quotes_mid(t) = ",expression(alpha), "+ ",expression(beta), "*SOI(t)  + error(t), R^2 = 27%",sep=""),
+     ylab="Bucket return - Quotes mid")
+abline(lm10, col="red")
+
 
 a <- h5read("ticks.20130423.h5","/ticks/AGN",bit64conversion='double')
 trades_quotes <- cal_quotes_EMA(delay_quotes_xms(a,0.025),1.5,2000)
@@ -84,8 +89,7 @@ a_test$time<-strptime(a_test$time,"%H:%M:%OS")
 a_test$time <- a_test$time - a_test$latency*0.001
 d_test_a <- delay_quotes_xms(a_test, 0.04)
 s_test_a <- trades[with(d_test_a, order(time)), ]
-#triming large trades (over 1000)
-s_test_a$size[s_test_a$type == 'T'] <- 1000
+
 test_tq <- filter_trades_quotes(s_test_a, length(s_test_a[,1]))
 L <- 50
 SOI_buckets_delta_prices_t <- calc_OI_by_time_buckets(150, test_tq , 10000, F, L, T)
