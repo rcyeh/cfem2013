@@ -386,21 +386,26 @@ buildmodel <- function(ticker,traindate,timebucket_size,threshold,scatterplot = 
   traindata <- data.frame(preturn = SOI_buckets_delta_prices[,2],crossterm = crossterm)
   lm10 <- lm(preturn ~ crossterm, data = traindata)
   r2 <- summary(lm10)$r.squared
-  if(scatterplot | fittedvsactualplot){
-    plot.new()
-  }
   ### train scatter plot ###
   if(scatterplot & fittedvsactualplot){
     par(mfrow=c(2,1))
   }
+  
   if(scatterplot){
+    if(!fittedvsactualplot){
+      par(mfrow=c(1,1))
+    }
     plot(crossterm,SOI_buckets_delta_prices[,2],
          main= paste("Concurrent In Sample\n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
          xlab= paste("SSOI\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
          ylab=expression("PRetrun"))
     abline(lm10, col="red")
   }
+  
   if(fittedvsactualplot){
+    if(!scatterplot){
+      par(mfrow=c(1,1))
+    }
     plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
          main= paste("Concurrent In Sample Plot \n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
          xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
@@ -420,9 +425,9 @@ outtest <- function(model,ticker,testdate,timebucket_size,threshold,lineplot = T
   testpredict <- predict.lm(model,newdata = testdata,interval="none")
   cdpr <- sum(((sign(testpredict) == sign(testdata$preturn))+0))/length(testpredict)
   if(lineplot){
-    plot.new()
+    par(mfrow=c(1,1))
     plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
-         main= paste("Concurrent Out of Sample Test \n",ticker," ",timebucket_size,"s time bucket",sep=""),
+         main= paste("Concurrent Out of Sample Test \n",ticker," ",timebucket_size,"s time bucket on ",testdate,sep=""),
          xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*SSOI(k)+epsilon(k), CDPR =",round(cdpr*100,1),"%",sep=""),
          ylab=expression("PRetrun"))
     #CDPR: correct direction prediction Ratio
