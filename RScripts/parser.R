@@ -376,3 +376,50 @@ filter_trades_quotes3 <- function(a, volume_limit=10000){
   trades_quotes$size[block_trades] = volume_limit
   return (trades_quotes)
 }
+
+buildmodel <- function(ticker,traindate,timebucket_size,threshold,scatterplot = F,fittedvsactualplot = T){
+  a <- h5read(paste("ticks.",traindate,".h5",sep=""), paste("/ticks/",ticker,sep=""), bit64conversion='double')
+  a <- a[order(a$exchange_time),]
+  trades_quotes <- filter_trades_quotes3(a,threshold)
+  SOI_buckets_delta_prices <- calc_SOI(timebucket_size,trades_quotes) 
+  crossterm <- SOI_buckets_delta_prices[,1]*sqrt(SOI_buckets_delta_prices[,3])
+  traindata <- data.frame(preturn = SOI_buckets_delta_prices[,2],crossterm = crossterm)
+  lm10 <- lm(preturn ~ crossterm, data = traindata)
+  r2 <- summary(lm10)$r.squared
+  ### train scatter plot ###
+  if(scatterplot){
+    plot(crossterm,SOI_buckets_delta_prices[,2],
+         main= paste("Concurrent In Sample\n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
+         xlab= paste("MSOI\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
+         ylab=expression("PRetrun"))
+    abline(lm10, col="red")
+  }
+  if(fittedvsactualplot){
+    plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
+         main= paste("Concurrent In Sample Plot \n",ticker," ",timebucket_size,"s time bucket on ",traindate,sep=""),
+         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), R^2=",round(r2*100,1),"%",sep=""),
+         ylab=expression("PRetrun"))
+    lines(index(lm10$fitted.values)*timebucket_size/60,lm10$fitted.values,col="red",lty=1)
+  }
+  return(lm10)
+}
+
+outtest <- function(model,ticker,testdate,timebucket_size,threshold,lineplot = T){
+  a <- h5read(paste("ticks.",testdate,".h5",sep=""), paste("/ticks/",ticker,sep=""), bit64conversion='double')
+  a <- a[order(a$exchange_time),]
+  trades_quotes <- filter_trades_quotes3(a,threshold)
+  SOI_buckets_delta_prices <- calc_SOI(timebucket_size,trades_quotes) 
+  crossterm <- SOI_buckets_delta_prices[,1]*sqrt(SOI_buckets_delta_prices[,3])
+  testdata <- data.frame(preturn = SOI_buckets_delta_prices[,2],crossterm = crossterm)
+  testpredict <- predict.lm(model,newdata = testdata,interval="none")
+  cdpr <- sum(((sign(testpredict) == sign(testdata$preturn))+0))/length(testpredict)
+  if(lineplot){
+    plot(index(SOI_buckets_delta_prices[,2])*timebucket_size/60,SOI_buckets_delta_prices[,2],type="l",
+         main= paste("Concurrent Out of Sample Test \n",ticker," ",timebucket_size,"s time bucket",sep=""),
+         xlab= paste("Time(minutes)\nPRetrun(k) = alpha + beta*MSOI(k)+epsilon(k), CDPR =",round(cdpr*100,1),"%",sep=""),
+         ylab=expression("PRetrun"))
+    #CDPR: correct direction prediction Ratio
+    lines(index(testpredict)*timebucket_size/60,testpredict,col="red",lty=1)
+  }
+}
+

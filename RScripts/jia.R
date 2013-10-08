@@ -12,25 +12,6 @@ Rprof(NULL)
 summaryRprof(lines="both")
 #############
 
-setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
-source("parser.R")
-setwd("/Users/JiaXu/Documents/FE project")
-a <- h5read("ticks.20130423.h5", "/ticks/AMZN", bit64conversion='double')
-a <- a[order(a$exchange_time),]
-#quotes <- a[a$type == 'Q',unlist(strsplit("time|latency|symbol|refresh|bid_exchange|ask_exchange|exchange_time|bid_size|bid|ask|ask_size|quals|seq_no|instrument_status|prev_close", "\\|"))]
-#trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
-trades_quotes <- filter_trades_quotes3(a,1000)
-#SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135,trades_quotes,20000,T) 
-SOI_buckets_delta_prices <- calc_SOI(60,trades_quotes) 
-
-crossterm <- SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]
-lm10 <- lm(SOI_buckets_delta_prices[,2] ~ SOI_buckets_delta_prices[,1])
-summary(lm10)
-plot(SOI_buckets_delta_prices[,1],SOI_buckets_delta_prices[,2],
-     main="Concurrent analysis \nstock AMZN _ time bucket 60 sec",
-     xlab=paste("SOI \nFormula: Quotes_mid(t) = ",expression(alpha), "+ ",expression(beta), "*SOI(t)  + error(t), R^2 = 27%",sep=""),
-     ylab="Bucket return - Quotes mid")
-abline(lm10, col="red")
 
 
 a <- h5read("ticks.20130423.h5","/ticks/AGN",bit64conversion='double')
@@ -103,7 +84,6 @@ directionmatchR <- 1-sum(sign(test_predict)-sign(test_data$BR))/length(test_pred
 
 a <- h5read("ticks.20130423.h5", "/ticks/BAC", bit64conversion='double')
 thres <- mean(s_trades$size)+2*sd(s_trades$size)
-
 
 
 SPY <- read.csv("hello.csv",header=TRUE,sep=" ")
