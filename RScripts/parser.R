@@ -435,3 +435,134 @@ outtest <- function(model,ticker,testdate,timebucket_size,threshold,lineplot = T
   }
 }
 
+
+#interval in seconds
+calc_OI_tick_time <- function(bucket_volume_size
+                              , trades
+                              , use_trades = F
+) {
+  prev_price <- 0
+  prev_bucket_price <- 0.0
+  volume_count <- 0.0
+  OI <- 0.0
+  OI_buckets <- vector()
+  price_returns <- vector()
+  price_volatilities <- vector()
+  price_returns_finer_grained <- vector()
+  
+  first_record <- T
+  
+  i <- 1
+  
+  prev_symbol <- 'X'
+  prev_prev_bid <- 0.0
+  prev_prev_ask <- 0.0
+  prev_bid <- 0.0
+  prev_ask <- 0.0
+  bid <- 0.0
+  ask <- 0.0
+  ema_bid <- 0.0
+  ema_ask <- 0.0
+  prev_bucket_mid <- 0.0
+  
+  use_quotes <- F
+  qc <- 0; trlen <- length(trades[,1])
+  
+  while (i+qc <= trlen){
+    type <- trades$type[i+qc]
+    
+    if (type == 'Q'){ # This is a Quote
+      prev_symbol <- 'Q'
+      prev_prev_bid <- prev_bid
+      prev_prev_ask <- prev_ask
+      prev_bid <- bid
+      prev_ask <- ask
+      bid <- trades$bid[i+qc]
+      ask <- trades$ask[i+qc]
+      
+      ema_bid <- trades$ema_bid[i+qc]
+      ema_ask <- trades$ema_ask[i+qc]
+      qc <- qc+1
+      next
+    }
+    else{ # This is a trade
+      if (!use_trades){if (prev_symbol != 'X'){ use_quotes <- T }}
+    }
+    
+    tm <- trades$exchange_time[i+qc] #just remember to format time before hand
+    volume <- trades$size[i+qc]
+    price <- trades$price[i+qc]
+    
+    if (first_record){ #first record
+      prev_price <- price
+      prev_prev_price <- price
+      prev_bucket_price <- price
+      prev_bucket_mid <- (bid+ask)/2
+      first_record <- F
+    }
+    
+    price_returns_finer_grained <- c(price_returns_finer_grained, log(price/prev_price))
+    
+    if (volume_count + volume >= bucket_volume_size){ #filled one bucket
+      residual_volume <- bucket_volume_size - volume_count
+      #print("filled one bucket")
+      b <- 1.0
+      
+      if (use_quotes){
+        b <- assign_buy_bid_ask(ema_bid, ema_ask, price)
+      }else{
+        b <- assign_buy(prev_prev_price, prev_price, price)
+      }
+      
+      OI <- OI + b*residual_volume
+      if (volume_count + volume > bucket_volume_size){ #split order
+        trades$size[i+qc] <- volume_count + volume - bucket_volume_size
+      }else{
+        i <- i+1
+      }
+      
+      #price_returns <- c(price_returns, log(((bid+ask)/2)/((ema_bid+ema_ask)/2)))
+      price_returns <- c(price_returns, log(((bid+ask)/2)/prev_bucket_mid))
+      
+      price_volatilities <- c(price_volatilities, var(price_returns_finer_grained))
+      
+      #if ((j %% L) == 0){ # using L number of buckets
+      price_returns_finer_grained <- vector()
+      #}
+      
+      OI_buckets <- c(OI_buckets, OI / bucket_volume_size) #update OI_bucket  
+      
+      OI <- 0.0
+      #print("Reset OI.")
+      volume_count <-0.0
+      start_t <-tm
+      prev_prev_price <- prev_price
+      prev_price <- price
+      prev_bucket_price <- price
+      prev_bucket_mid <- (bid+ask)/2
+      next
+    }
+    else{
+      volume_count <- volume_count + volume
+    }
+    
+    
+    #print("filled one bin--->")
+    if (use_quotes){
+      b <- assign_buy_bid_ask(ema_bid, ema_ask, price)
+    }else{
+      b <- assign_buy(prev_prev_price, prev_price, price)
+    }
+    
+    OI <- OI + b*volume
+    prev_prev_price <- prev_price
+    prev_price <- price
+    
+    i <- i+1
+  }
+  
+  price_volatilities[is.na(price_volatilities)] <-0
+  OI_vs_delta_prices <- cbind(OI_buckets, price_returns, price_volatilities)
+  
+  return (OI_vs_delta_prices)
+}
