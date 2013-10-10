@@ -12,10 +12,8 @@ Rprof(NULL)
 summaryRprof(lines="both")
 #############
 
-
-
-a <- h5read("ticks.20130423.h5","/ticks/AGN",bit64conversion='double')
-trades_quotes <- cal_quotes_EMA(delay_quotes_xms(a,0.025),1.5,2000)
+a <- h5read("ticks.20130424.h5","/ticks/AGN",bit64conversion='double')
+trades_quotes <- cal_quotes_EMA(delay_quotes_xms3(a,0.025),1.5,2000)
 SOI_buckets_delta_prices <- calc_OI_by_time_buckets(135,trades_quotes,10000, F, L, T)     
 summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]*SOI_buckets_delta_prices[,3]))
 

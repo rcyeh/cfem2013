@@ -1,22 +1,32 @@
 #Please change your source file path
 source("C:/cfem2013_midterm/RScripts/parser.R")
 
+
+rm(list = ls())
+setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
+source("parser.R")
+setwd("/Users/JiaXu/Documents/FE project")
+
+
 #tickers <- c('AMZN', 'BA','TIF','AGN','CAT') #,'BAC','MSFT')
 tickers <- c('CAT')
 dates <- c('20130423','20130424','20130425','20130426','20130429','20130430')
 am_vol <- 2270014 #AMZN volume, corresponding to 60s
 thres_h <- 10000
 
-windows()
-par(mfrow=c(3,2))
+quartz()
+par(mfrow=c(2,2))
 l_tickers <-length(tickers)
+counter=24
 
 for (m in 1:l_tickers){
   tick <- tickers[m]
   for (l in 1:length(dates)){
+    counter = counter +1
     date = dates[l]
     
     a <- h5read(paste("ticks.",date,".h5",sep=""), paste("/ticks/",tick,sep=""), bit64conversion='double')
+    a <- a[order(a$exchange_time),]
     trades <- a[a$type == 'T',unlist(strsplit("time|latency|symbol|exchange|exchange_time|seq_no|price|size|volume|quals|market_status|instrument_status|thru_exempt|sub_market|line|type", "\\|"))]
     total_volume <- trades$volume[length(trades[,1])]
 
@@ -28,16 +38,15 @@ for (m in 1:l_tickers){
   
     l_prices = length(SOI_buckets_delta_prices[,2])
     # power transformation of ^0.45
-    ind_var <- (SOI_buckets_delta_prices[-1,1]*SOI_buckets_delta_prices[-1,3])
-    ind_var_pred <- (SOI_buckets_delta_prices[-l_prices,1]*SOI_buckets_delta_prices[-l_prices,3])
+    ind_var <- (SOI_buckets_delta_prices[-1,1]*sqrt(SOI_buckets_delta_prices[-1,3]))
+    #ind_var_pred <- (SOI_buckets_delta_prices[-l_prices,1]*sqrt(SOI_buckets_delta_prices[-l_prices,3]))
   
-    ind_var_trans <- ind_var^0.45 
+    ind_var_trans <- ind_var
     #plot(ind_var_trans, SOI_buckets_delta_prices[-1,2])
      
     #ind_var_pred_trans <- ind_var_pred^0.45
     #plot(ind_var_pred_trans, SOI_buckets_delta_prices[-1,2])
     
-  
     r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_trans))$r.squared
     #r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~ind_var_pred_trans))$r.squared
     
@@ -56,8 +65,11 @@ for (m in 1:l_tickers){
     #r2 <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-1,1]))$r.squared
     #r2p <- summary(lm(SOI_buckets_delta_prices[-1,2]~SOI_buckets_delta_prices[-l_prices,1]))$r.squared
     #print(paste(key, ": ",r2,",",r2p))
-  }
-  dev.copy2pdf(file = paste(tick,".pdf",sep=""))
+    if ((counter %% 4 ==0) || (l == length(dates) && m==l_tickers))
+    {
+      dev.copy2pdf(file = paste(counter,".pdf",sep=""))
+    }
+  } 
 }
 
 
