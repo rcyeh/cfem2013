@@ -5,10 +5,11 @@ library(car)
 setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
 source("parser.R")
 setwd("/Users/JiaXu/Documents/FE project")
+date = "20130426"
+tick = "AGN"
+#TIF ,"BA", "AMZN"
+a <- h5read(paste("ticks.",date,".h5",sep=""), paste("/ticks/",tick,sep=""), bit64conversion='double')
 
-date = "20130423"
-a <- h5read(paste("ticks.",date,".h5",sep=""), paste("/ticks/TIF",sep=""), bit64conversion='double')
-#AMZN,BA
 delays <- c(seq(0,.5,.005), seq(1,10,1)) #seq(1,30,1)
 l_delays <- length(delays)
 thres_h = 1000
@@ -31,4 +32,4 @@ for(i in 1:l_delays){
                      #cross = cross[-exind])
   r2s[i] = summary(lm(PReturn ~ SOI,data = rdata))$adj.r.squared
 }
-plot(delays,r2s,type="l")
+plot(delays,r2s,type="l",main= paste(date," ", tick))
