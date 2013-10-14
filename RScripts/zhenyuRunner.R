@@ -117,21 +117,30 @@ for (m in 1:l_tickers){
   
 >>>>>>> aa7fcdc6a43e729f5914aed27f8798a5cf626908
 }
-
+setwd("/Users/JiaXu/Documents/FE project 2013/RScripts")
+source("parser.R")
+setwd("/Users/JiaXu/Documents/FE project")
+date = "20130423"
 a <- h5read(paste("ticks.",date,".h5",sep=""), paste("/ticks/AMZN",sep=""), bit64conversion='double')
-
-windows()
-par(mfrow=c(2,1))
-
-delayed_a <- cal_quotes_EMA_bid_ask(delay_quotes_xms(a,5),1.75)
-delayed_a <- delay_quotes_xms(a,0)
-trades_quotes <- filter_trades_quotes3(delayed_a, thres_h)
-
-SOI_buckets_delta_prices <- calc_SOI(60, trades_quotes,F)
-SOI_buckets_delta_prices <- calc_OI_tick_time(10000, trades_quotes,T)
-SOI_buckets_delta_prices <- calc_OI_by_time_buckets(60, trades_quotes, 10000, T)
-
-r2 = summary(lm(SOI_buckets_delta_prices[,2]~SOI_buckets_delta_prices[,1]*sqrt(SOI_buckets_delta_prices[,3])))$adj.r.squared
+#windows()
+#par(mfrow=c(2,1))
+delays <- c(seq(0,.5,.005), seq(1,5,1))
+l_delays <- length(delays)
+thres_h = 1000
+r2s <- c()
+for(i in 1:l_delays){
+  delay = delays[i]
+  #delayed_a <- cal_quotes_EMA_bid_ask(delay_quotes_xms(a,delay),1.75)
+  delayed_a <- delay_quotes_xms(a,delay)
+  trades_quotes <- filter_trades_quotes3(delayed_a, thres_h)
+  
+  SOI_buckets_delta_prices <- calc_SOI(60, trades_quotes,F)
+  #SOI_buckets_delta_prices <- calc_OI_tick_time(10000, trades_quotes,T)
+  #SOI_buckets_delta_prices <- calc_OI_by_time_buckets(60, trades_quotes, 10000, T)
+  cross = SOI_buckets_delta_prices[,1]*sqrt(SOI_buckets_delta_prices[,3])
+  r2 = summary(lm(SOI_buckets_delta_prices[,2]~cross))$adj.r.squared
+  r2s[i] = r2
+}
 
 plot(SOI_buckets_delta_prices[,1]*sqrt(SOI_buckets_delta_prices[,3]), SOI_buckets_delta_prices[,2]
      ,xlab="SSOI(t)",ylab="Log Quotes(mid) Return")

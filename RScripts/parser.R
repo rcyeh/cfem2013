@@ -17,8 +17,8 @@ assign_buy_bid_ask <- function(bid, ask, price, prev_p, prev_prev_p){
     return (1)
   }
   else{
-    return (assign_buy(prev_prev_p, prev_p, price))
-    #return (0)
+    #return (assign_buy(prev_prev_p, prev_p, price))
+    return (0)
   }
 }
 
@@ -120,8 +120,8 @@ calc_SOI <- function(interval, trades, use_trades=T){
     price <- trades$price[i+qc]
     
     if (use_quotes){
-      b <- assign_buy_bid_ask(ema_bid, ema_ask, price, prev_price, prev_prev_price)
-      #b <- assign_buy_bid_ask(bid, ask, price, prev_price, prev_prev_price)
+      #b <- assign_buy_bid_ask(ema_bid, ema_ask, price, prev_price, prev_prev_price)
+      b <- assign_buy_bid_ask(bid, ask, price, prev_price, prev_prev_price)
     }else{
       b <- assign_buy(prev_prev_price, prev_price, price)
     }
