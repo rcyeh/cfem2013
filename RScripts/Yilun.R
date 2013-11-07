@@ -1,3 +1,4 @@
+setwd("~/Desktop")
 library(vcd)
 
 ########## Raw Data ##########
@@ -30,6 +31,7 @@ late = raw_data(late_raw)
 Contingency = function(data){
 	D1 = sum(data[,4]*data[,16])
 	D2 = sum(data[,5]*data[,16])
+	BJY = sum(data[,2]*data[,16])+sum(data[,6]*data[,16])+sum(data[,14]*data[,16]) 
 	n = dim(data)[1]
 	Primary = vector()
 	for (i in 1:n){
@@ -38,10 +40,10 @@ Contingency = function(data){
 	Primary_Exchange = sum(Primary)
 	Other = vector()
 	for (i in 1:n){
-		Other[i] = (1-data[i,which(colnames(data) == data[i,18])]-data[i,4]-data[i,5])*data[i,16]
+		Other[i] = (1-data[i,which(colnames(data) == data[i,18])]-data[i,2]-data[i,4]-data[i,5]-data[i,6]-data[i,14])*data[i,16]
 	}
 	Other_Exchange = sum(Other)
-	r = rbind(D1,D2,Primary_Exchange,Other_Exchange)
+	r = rbind(D1,D2,BJY,Primary_Exchange,Other_Exchange)
 	return(r)
 }
 
@@ -142,7 +144,16 @@ Ternary_Volume = function(data,time){
 	title(main = paste("Ternary Plot for",time,"session colored by level of Trading Volume",sep = " "))
 }
 
+Ternary_Volume(early_clus1,"late")
+Ternary_Volume(early_clus2,"late")
+Ternary_Volume(early_clus3,"late")
 Ternary_Volume(midday_clus1,"late")
+Ternary_Volume(midday_clus2,"late")
+Ternary_Volume(midday_clus3,"late")
+Ternary_Volume(late_clus1,"late")
+Ternary_Volume(late_clus2,"late")
+Ternary_Volume(late_clus3,"late")
+
 
 Ternary_Price = function(data,time){
 	plot.new()
@@ -199,26 +210,29 @@ for (i in 1:9){
 plot(ts(CH),ylab = "CH value of k-means method", xlab = "K", xaxt = "n", main = "CH value of k-means clutering for early session")
 axis(1,at = c(1:9), labels = c(2:10), cex.axis=1)
 
-km = kmeans(late[,c(1:15)],centers = 2,iter.max=1000,alg="Lloyd")
-km$center
-rownames(late)[order(late[,17],decreasing = T)][which(km$cluster[order(late[,17],decreasing = T)[1:1000]] == 2)[1:5]]
-par(mfrow = c(3,2))
-plot(as.factor(as.character(early[which(km1$cluster==1),18])),main="Early K=2: Cluster 1",col=1,ylim=c(0,2000))
-plot(as.factor(as.character(early[which(km1$cluster==2),18])),main="Early K=2: Cluster 2",col=1,ylim=c(0,2000))
-plot(as.factor(as.character(early[which(km2$cluster==1),18])),main="Midday K=2: Cluster 1",col=1,ylim=c(0,2000))
-plot(as.factor(as.character(early[which(km2$cluster==2),18])),main="Midday K=2: Cluster 2",col=1,ylim=c(0,2000))
-plot(as.factor(as.character(late[which(km$cluster==1),18])),main="Late K=2: Cluster 1",col=1,ylim=c(0,2000))
-plot(as.factor(as.character(late[which(km$cluster==2),18])),main="Late K=2: Cluster 2",col=1,ylim=c(0,2000))
-
 ########## Principal Component Analysis ##########
-PCA = function(data){
-	pca = prcomp(data[c(1:15)],scale=T)
-	sum = summary(pca)
-	d = round(pca$rotation,digit=3)
-	return(list(sum,d))
+PCA = function(data,time){
+  pca = prcomp(data[c(1:15)],scale = T)
+  sum = summary(pca)
+  d = round(pca$rotation,digit=3)
+  x = pca$x
+  rot = pca$rotation
+  dist = x%*%rot
+  project = sqrt(rowSums(dist^2))
+  price = data[,17]
+  c = cbind(project,price)
+	order_proj = c[order(c[,2]),1]
+	plot(ts(order_proj))
+	len = dim(c)[1]
+	small = c[order(c[,1])[1:10],]
+	large = c[order(c[,1])[(len-9):len],]
+  plot(ts(order_proj),ylab = "PCA Projection",xlab = "Price Rank",main=paste("PCA projection ordered by average trading price for",time,"trading",sep = " "))
+  return(list(sum,d,small,large))
 }
 
-PCA(early)
+a = PCA(early,"early")
+b = PCA(midday,"midday")
+c = PCA(late,"late")
 
 ########## BJY ##########
 BJY = function(data){
@@ -243,3 +257,9 @@ BJY = function(data){
 	name = rownames(data)[num]	
 	return(list(num,mat,all,name))
 }
+
+abs(PCA(late)[[2]])>0.3
+
+PCA(early)
+PCA(midday)
+PCA(late)
