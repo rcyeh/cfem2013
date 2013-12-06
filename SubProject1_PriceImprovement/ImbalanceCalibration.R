@@ -4,7 +4,7 @@ dates <<- c('20130423','20130424','20130425','20130426','20130429','20130430')
 thres_h <<- 10000
 times <<- c(10,20,30,40,50,60,90,120,150,180)
 #calculate vol for each symbol
-tickers <<- c('AAPL','ABT','ACN','AEP','AIG','ALL','AMGN','AMZN','APA','APC','AXP','BA','BAC','BAX','BK','BMY','BRK_dot_B','C','CAT','CL','CMCSA','COF','COP','COST','CSCO','CVS','CVX','DD','DELL','DIS','DOW','DVN','EBAY','EMC','EMR','EXC','F','FCX','FDX','GD','GE','GILD','GM','GOOG','GS','HAL','HD','HON','HPQ','IBM','INTC','JNJ','JPM','KO','LLY','LMT','LOW','MA','MCD','MDLZ','MDT','MET',
+tickers <<- c('ABT','AAPL','ACN','AEP','AIG','ALL','AMGN','AMZN','APA','APC','AXP','BA','BAC','BAX','BK','BMY','BRK_dot_B','C','CAT','CL','CMCSA','COF','COP','COST','CSCO','CVS','CVX','DD','DELL','DIS','DOW','DVN','EBAY','EMC','EMR','EXC','F','FCX','FDX','GD','GE','GILD','GM','GOOG','GS','HAL','HD','HON','HPQ','IBM','INTC','JNJ','JPM','KO','LLY','LMT','LOW','MA','MCD','MDLZ','MDT','MET',
              'MMM','MO','MON','MRK','MS','MSFT','NKE','NOV','NSC','NWSA','ORCL','OXY','PEP','PFE','PG','PM','QCOM','RTN','SBUX','SLB',
              'SO','SPG','T','TGT','TWX','TXN','UNH','UNP','UPS','USB','UTX','V','VZ','WAG','WFC','WMB','WMT','XOM')
 
@@ -18,7 +18,7 @@ tickers <<- c('AAPL','ABT','ACN','AEP','AIG','ALL','AMGN','AMZN','APA','APC','AX
 # for 1-bucket ahead prediction
 aggregate_imbalance <- function(use_trades, exclude_d, date='20130423'){
   stockvols <- read.csv('SnP100stock_vols.csv', header = FALSE)
-  names(stockvols) <- c('Symbol','vol','volvol')
+  names(stockvols) <- c('Symbol','vol','volvol') #volvol is the volatility of volatility
     
   for (j in 1:length(tickers)){
     tick = tickers[j]
@@ -30,7 +30,7 @@ aggregate_imbalance <- function(use_trades, exclude_d, date='20130423'){
     
     if (use_trades){
       d_a <- delay_quotes_xms(b, 0.03)
-      trades_quotes <- filter_trades_quotes2(d_a, 10000)   
+      trades_quotes <- filter_trades_quotes(d_a, 10000)   
       buy_sells <- classify_buy_sell(trades_quotes, F)
       all_trades <- filter(trades_quotes, 'T', F)
       all_trades <- all_trades[-length(all_trades),]
@@ -94,5 +94,5 @@ aggregate_imbalance <- function(use_trades, exclude_d, date='20130423'){
 aggregate_imbalance(F,F)
 aggregate_imbalance(F,T)
 
-aggregate_imbalance(T,F)
+aggregate_imbalance(T,F,'20130424')
 aggregate_imbalance(T,T)
