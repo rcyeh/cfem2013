@@ -123,6 +123,10 @@ last <- function (a){
   return (a[length(a)])
 }
 
+second_to_last <- function (a){
+  return (a[length(a)-1])
+}
+
 filter <- function(a, sym='Q', exclude_qual=T){ 
   indd <- which(a$type == sym);
   if (exclude_qual==T){

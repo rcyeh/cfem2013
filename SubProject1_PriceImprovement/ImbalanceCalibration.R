@@ -45,6 +45,7 @@ aggregate_imbalance <- function(use_trades, exclude_d, date='20130423'){
       t <- times[ti]
       # define groups/buckets based on 60s time interval
       time_period <- t * 1000
+
       groups <- as.matrix(floor((a$exchange_time-start_ms)/time_period)) + 1
       quotes <- data.frame(cbind(a, groups))
       
@@ -71,18 +72,28 @@ aggregate_imbalance <- function(use_trades, exclude_d, date='20130423'){
       bid_size_grp <- aggregate(quotes$bid_size, by=list(quotes$groups), FUN = last)
       ask_size_grp <- aggregate(quotes$ask_size, by=list(quotes$groups), FUN = last)
       qoi <- (bid_size_grp$x - ask_size_grp$x) / (bid_size_grp$x + ask_size_grp$x)
+
+      l_bid_size_grp <- aggregate(quotes$bid_size, by=list(quotes$groups), FUN = second_to_last)
+      l_ask_size_grp <- aggregate(quotes$ask_size, by=list(quotes$groups), FUN = second_to_last)
+      l_ask_size_grp <- as.numeric(l_ask_size_grp$x)
+      l_ask_size_grp[is.na(l_ask_size_grp)] <- 1
+      l_bid_size_grp <- as.numeric(l_bid_size_grp$x)
+      l_bid_size_grp[is.na(l_bid_size_grp)] <- 1
+      
+      l_qoi <- (l_bid_size_grp - l_ask_size_grp) / (l_bid_size_grp + l_ask_size_grp)
       
       #1 is soi, 2 is return
       l <- length(qoi)
       qoi <- qoi[-l]
+      l_qoi <- l_qoi[-1]
       stockvol <- stockvols$vol[stockvols$Symbol == tick]
       scaled_return <- mid_return/stockvol
       
       if (use_trades){ 
         soi <- soi$x[-l]   	    
-        msg<- paste(tick,qoi,soi,mid_return,scaled_return ,sep=",")
+        msg<- paste(tick,qoi,l_qoi,soi,mid_return,scaled_return ,sep=",")
       } else{
-        msg<- paste(tick,qoi,mid_return,scaled_return ,sep=",")
+        msg<- paste(tick,qoi,l_qoi,mid_return,scaled_return ,sep=",")
       }
       # One bucket ahead prediction
       cat(paste(msg,'\n'), file=paste('ExhaustiveAnalysis',date,'time',t,'_',use_trades,exclude_d,'.csv',sep=""), append=T)
