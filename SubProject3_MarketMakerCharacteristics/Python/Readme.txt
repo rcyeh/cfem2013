@@ -1,0 +1,1 @@
+Takes the stock list rosters, for each ticker, look up the primary exchange from Yahoo FinanceRecords the output as a csv file

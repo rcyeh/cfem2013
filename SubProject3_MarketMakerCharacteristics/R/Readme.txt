@@ -1,0 +1,1 @@
+Exchange AnalyticsCompute the volume fraction, spread, tick size for different exchangeThen record the result as a csv file.Market Maker AnalyticsCompute all stat by aggregating top 8 market makerOutputs results as a csv fileVisualizationGenerates visualization looking at different factors
