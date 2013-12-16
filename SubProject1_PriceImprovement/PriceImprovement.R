@@ -111,7 +111,11 @@ classify_buy_sell <- function(trades_quotes, break_even=F){
         b_or_s <- classify_bid_ask(bid, ask, trades_quotes$price[i]) 
       }
       else{
-        b_or_s <- classify(price, trades_quotes$price[which(trades_quotes[1:i,]$type=='T')])
+        #b_or_s <- classify(price, trades_quotes$price[which(trades_quotes[1:i,]$type=='T')])
+        b_or_s <- classify_bid_ask(bid, ask, trades_quotes$price[i]) 
+        if (b_or_s == 0){
+          b_or_s <- classify(trades_quotes$price[which(trades_quotes[1:i,]$type=='T')])
+        }
       }
       classification <- c(classification, b_or_s)
     }
