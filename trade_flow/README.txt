@@ -1,6 +1,0 @@
-Abstract:
-
-
-Guide to resources:
-
-
